@@ -1,20 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, Field
 from datetime import datetime
-
-
-class TaskStatus(str, Enum):
-    TODO = "TODO"
-    IN_PROGRESS = "IN_PROGRESS"
-    IN_REVIEW = "IN_REVIEW"
-    DONE = "DONE"
-
-
-class TaskPriority(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    URGENT = "URGENT"
+from app.core.enums import TaskStatus, TaskPriority
 
 
 class TaskCreate(BaseModel):
