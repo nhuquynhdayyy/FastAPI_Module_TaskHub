@@ -4,11 +4,14 @@ from app.api.v1.router import api_router
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from app.db.session import engine
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     print("TaskHub starting up")
     yield
+    await engine.dispose()
     print("TaskHub shutting down")
 
 

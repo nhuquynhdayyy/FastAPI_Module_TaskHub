@@ -1,7 +1,8 @@
-from enum import Enum
-from pydantic import BaseModel, Field
 from datetime import datetime
-from app.core.enums import TaskStatus, TaskPriority
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.enums import TaskPriority, TaskStatus
 
 
 class TaskCreate(BaseModel):
@@ -10,6 +11,7 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: datetime | None = None
+    assignee_id: int | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -18,13 +20,19 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: datetime | None = None
+    assignee_id: int | None = None
 
 
 class TaskResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
+    project_id: int
+    assignee_id: int | None
     title: str
     description: str | None
     status: TaskStatus
     priority: TaskPriority
     due_date: datetime | None
+    created_by: int
     created_at: datetime
