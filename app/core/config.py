@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DEFAULT_USER_ID: int = 1
     DEFAULT_PROJECT_ID: int = 1
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
 
 settings = Settings()
