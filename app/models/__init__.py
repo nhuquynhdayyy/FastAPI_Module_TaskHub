@@ -8,6 +8,7 @@ from app.models.models import (
     task_labels,
     Label,
     Comment,
+    RefreshToken,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "task_labels",
     "Label",
     "Comment",
+    "RefreshToken",
 ]
