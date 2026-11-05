@@ -26,11 +26,11 @@ class TaskService:
             )
         return task
 
-    async def create_task(self, data: TaskCreate) -> Task:
+    async def create_task(self, data: TaskCreate, user_id: int) -> Task:
         return await self.repository.create(
             **data.model_dump(),
             project_id=settings.DEFAULT_PROJECT_ID,
-            created_by=settings.DEFAULT_USER_ID,
+            created_by=user_id,
         )
 
     async def update_task(self, task_id: int, data: TaskUpdate) -> Task:
