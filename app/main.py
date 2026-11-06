@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from app.core.exceptions import NotFoundException
 import logging
+from app.db.session import engine
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +16,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("TaskHub starting up")
     yield
+    await engine.dispose()
     logger.info("TaskHub shutting down")
 
 
