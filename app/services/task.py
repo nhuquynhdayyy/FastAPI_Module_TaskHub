@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -8,6 +8,8 @@ from app.db.session import get_db
 from app.models import Task
 from app.repositories.task import TaskRepository
 from app.schemas.task import TaskCreate, TaskUpdate
+from app.core.constants import TASK_NOT_FOUND
+from app.core.exceptions import NotFoundException
 
 
 class TaskService:
@@ -20,10 +22,7 @@ class TaskService:
     async def get_task(self, task_id: int) -> Task:
         task = await self.repository.get(task_id)
         if task is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Task không tồn tại",
-            )
+            raise NotFoundException(TASK_NOT_FOUND)
         return task
 
     async def create_task(self, data: TaskCreate, user_id: int) -> Task:
