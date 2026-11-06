@@ -1,6 +1,6 @@
 from typing import Any, Generic, TypeVar
 
-from sqlalchemy import func, inspect, select
+from sqlalchemy import func, inspect, select, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
@@ -16,18 +16,22 @@ class BaseRepository(Generic[ModelT]):
     async def get(self, obj_id: int) -> ModelT | None:
         return await self.session.get(self.model, obj_id)
 
+    async def paginate(
+        self, stmt: Select[tuple[ModelT]], *, page: int, limit: int
+    ) -> tuple[list[ModelT], int]:
+        total = await self.session.scalar(
+            select(func.count()).select_from(stmt.order_by(None).subquery())
+        )
+        result = await self.session.scalars(
+            stmt.offset((page - 1) * limit).limit(limit)
+        )
+        return list(result.all()), total or 0
+
     async def get_multi(
         self, *, page: int = 1, limit: int = 20
     ) -> tuple[list[ModelT], int]:
-        total = await self.session.scalar(select(func.count()).select_from(self.model))
-        stmt = (
-            select(self.model)
-            .order_by(*inspect(self.model).primary_key)
-            .offset((page - 1) * limit)
-            .limit(limit)
-        )
-        result = await self.session.scalars(stmt)
-        return list(result.all()), total or 0
+        stmt = select(self.model).order_by(*inspect(self.model).primary_key)
+        return await self.paginate(stmt, page=page, limit=limit)
 
     async def create(self, **data: Any) -> ModelT:
         obj = self.model(**data)
