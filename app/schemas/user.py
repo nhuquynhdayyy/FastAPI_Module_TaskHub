@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import ConfigDict, EmailStr, Field
 from datetime import datetime
 from app.core.enums import UserRole
 from app.core.constants import (
@@ -7,9 +7,10 @@ from app.core.constants import (
     PASSWORD_MAX_LENGTH,
     PASSWORD_MIN_LENGTH,
 )
+from app.schemas.base import AppBaseModel
 
 
-class UserCreate(BaseModel):
+class UserCreate(AppBaseModel):
     email: EmailStr
     full_name: str = Field(
         ..., min_length=FULL_NAME_MIN_LENGTH, max_length=FULL_NAME_MAX_LENGTH
@@ -19,13 +20,13 @@ class UserCreate(BaseModel):
     )
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(AppBaseModel):
     full_name: str | None = Field(
         default=None, min_length=FULL_NAME_MIN_LENGTH, max_length=FULL_NAME_MAX_LENGTH
     )
 
 
-class ChangePassword(BaseModel):
+class ChangePassword(AppBaseModel):
     current_password: str = Field(
         ..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
     )
@@ -34,7 +35,7 @@ class ChangePassword(BaseModel):
     )
 
 
-class UserResponse(BaseModel):
+class UserResponse(AppBaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     email: EmailStr
