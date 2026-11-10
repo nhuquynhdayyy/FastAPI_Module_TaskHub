@@ -17,7 +17,7 @@ class TaskCreate(AppBaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: datetime | None = None
-    assignee_id: int | None = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
 
 class TaskUpdate(AppBaseModel):
@@ -28,7 +28,7 @@ class TaskUpdate(AppBaseModel):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: datetime | None = None
-    assignee_id: int | None = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title", "status", "priority")
     @classmethod

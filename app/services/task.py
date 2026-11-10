@@ -4,17 +4,25 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.constants import TASK_NOT_FOUND
+from app.core.constants import ASSIGNEE_NOT_FOUND, TASK_NOT_FOUND
 from app.core.exceptions import NotFoundException
 from app.db.session import get_db
 from app.models import Task
 from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
 class TaskService:
-    def __init__(self, repository: TaskRepository) -> None:
+    def __init__(
+        self, repository: TaskRepository, user_repository: UserRepository
+    ) -> None:
         self.repository = repository
+        self.user_repository = user_repository
+
+    async def _ensure_assignee_exists(self, assignee_id: int | None) -> None:
+        if assignee_id is not None and await self.user_repo.get(assignee_id) is None:
+            raise NotFoundException(ASSIGNEE_NOT_FOUND)
 
     async def list_tasks(self, page: int, limit: int) -> tuple[list[Task], int]:
         return await self.repository.get_multi(page=page, limit=limit)
@@ -44,4 +52,4 @@ class TaskService:
 def get_task_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TaskService:
-    return TaskService(TaskRepository(session))
+    return TaskService(TaskRepository(session), UserRepository(session))

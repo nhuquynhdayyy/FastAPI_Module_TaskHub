@@ -63,7 +63,7 @@ class Project(Base):
         ForeignKey("workspaces.id", ondelete="CASCADE")
     )
     name: Mapped[str] = mapped_column(String(100))
-    description: Mapped[str | None] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(Text, default=None)
     status: Mapped[ProjectStatus] = mapped_column(
         Enum(ProjectStatus), default=ProjectStatus.ACTIVE
     )
@@ -107,8 +107,8 @@ class Task(Base):
     due_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
     )
-    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
-    created_at: Mapped[datetime | None] = mapped_column(
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
     project: Mapped["Project"] = relationship(back_populates="tasks")
