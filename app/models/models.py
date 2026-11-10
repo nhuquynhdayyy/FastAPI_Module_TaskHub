@@ -9,6 +9,7 @@ from app.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Enum, DateTime, func, ForeignKey, Column, Table, Text
 from datetime import datetime
+from app.core.constants import TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH
 
 
 class User(Base):
@@ -103,8 +104,10 @@ class Task(Base):
     assignee_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), default=None, index=True
     )
-    title: Mapped[str] = mapped_column(String(100))
-    description: Mapped[str | None] = mapped_column(Text, default=None)
+    title: Mapped[str] = mapped_column(String(TITLE_MAX_LENGTH))
+    description: Mapped[str | None] = mapped_column(
+        String(DESCRIPTION_MAX_LENGTH), default=None
+    )
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), default=TaskStatus.TODO
     )
