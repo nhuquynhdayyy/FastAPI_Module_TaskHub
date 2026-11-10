@@ -69,14 +69,16 @@ class AuthService:
     async def refresh(self, refresh_token: str) -> TokenResponse:
         try:
             payload = decode_token(refresh_token, REFRESH_TOKEN_TYPE)
-        except jwt.PyJWTError:
+            jti = payload["jti"]
+            user_id = int(payload["sub"])
+        except (jwt.PyJWTError, KeyError, ValueError, TypeError):
             raise _unauthorized("Refresh token không hợp lệ hoặc đã hết hạn") from None
 
-        record = await self.token_repo.get_by_jti(payload["jti"], for_update=True)
+        record = await self.token_repo.get_by_jti(jti, for_update=True)
         if record is None or record.revoked:
             raise _unauthorized("Refresh token đã bị thu hồi")
 
-        user = await self.user_repo.get(int(payload["sub"]))
+        user = await self.user_repo.get(user_id)
         if user is None or not user.is_active:
             raise _unauthorized("Tài khoản không khả dụng")
 

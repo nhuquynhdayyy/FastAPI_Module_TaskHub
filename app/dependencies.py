@@ -24,10 +24,11 @@ async def get_current_user(
     )
     try:
         payload = decode_token(token, ACCESS_TOKEN_TYPE)
-    except jwt.PyJWTError:
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         raise credentials_exception from None
 
-    user = await UserRepository(session).get(int(payload["sub"]))
+    user = await UserRepository(session).get(user_id)
     if user is None or not user.is_active:
         raise credentials_exception
     return user
