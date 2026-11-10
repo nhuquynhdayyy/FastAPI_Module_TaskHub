@@ -1,21 +1,37 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import datetime
 from app.core.enums import UserRole
+from app.core.constants import (
+    FULL_NAME_MAX_LENGTH,
+    FULL_NAME_MIN_LENGTH,
+    PASSWORD_MAX_LENGTH,
+    PASSWORD_MIN_LENGTH,
+)
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    full_name: str = Field(..., min_length=3, max_length=100)
-    password: str = Field(..., min_length=8, max_length=72)
+    full_name: str = Field(
+        ..., min_length=FULL_NAME_MIN_LENGTH, max_length=FULL_NAME_MAX_LENGTH
+    )
+    password: str = Field(
+        ..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
 
 
 class UserUpdate(BaseModel):
-    full_name: str | None = Field(default=None, min_length=3, max_length=100)
+    full_name: str | None = Field(
+        default=None, min_length=FULL_NAME_MIN_LENGTH, max_length=FULL_NAME_MAX_LENGTH
+    )
 
 
 class ChangePassword(BaseModel):
-    current_password: str = Field(..., min_length=8, max_length=72)
-    new_password: str = Field(..., min_length=8, max_length=72)
+    current_password: str = Field(
+        ..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
+    new_password: str = Field(
+        ..., min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
 
 
 class UserResponse(BaseModel):
