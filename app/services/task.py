@@ -1,12 +1,7 @@
-from typing import Annotated
-
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
 from app.core.constants import ASSIGNEE_NOT_FOUND, TASK_NOT_FOUND
 from app.core.exceptions import NotFoundException
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.models import Task
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
@@ -50,6 +45,6 @@ class TaskService:
 
 
 def get_task_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> TaskService:
     return TaskService(TaskRepository(session), UserRepository(session))

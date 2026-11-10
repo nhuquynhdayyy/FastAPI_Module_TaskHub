@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from app.core.config import settings
 from collections.abc import AsyncIterator
+from typing import Annotated
+from fastapi import Depends
 
 engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
 
@@ -19,8 +21,5 @@ async def get_db() -> AsyncIterator[AsyncSession]:
             await session.rollback()
             raise
 
-
-from typing import Annotated
-from fastapi import Depends
 
 DBSession = Annotated[AsyncSession, Depends(get_db)]
