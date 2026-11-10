@@ -1,10 +1,11 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import UnauthorizedException
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
 from app.models import User
@@ -17,20 +18,15 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Không thể xác thực thông tin đăng nhập",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = decode_token(token, ACCESS_TOKEN_TYPE)
         user_id = int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError, TypeError):
-        raise credentials_exception from None
+        raise UnauthorizedException() from None
 
     user = await UserRepository(session).get(user_id)
     if user is None or not user.is_active:
-        raise credentials_exception
+        raise UnauthorizedException()
     return user
 
 

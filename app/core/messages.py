@@ -1,0 +1,8 @@
+UNAUTHORIZED = "Không thể xác thực thông tin đăng nhập"
+INVALID_CREDENTIALS = "Sai email hoặc mật khẩu"
+INVALID_REFRESH_TOKEN = "Refresh token không hợp lệ hoặc đã hết hạn"
+REFRESH_TOKEN_REVOKED = "Refresh token đã bị thu hồi"
+ACCOUNT_UNAVAILABLE = "Tài khoản không khả dụng"
+EMAIL_ALREADY_REGISTERED = "Email đã được đăng ký"
+CURRENT_PASSWORD_INCORRECT = "Mật khẩu hiện tại không đúng"
+NEW_PASSWORD_SAME_AS_CURRENT = "Mật khẩu mới phải khác mật khẩu hiện tại"

@@ -1,6 +1,10 @@
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core import messages
+from app.core.exceptions import BadRequestException
 from app.core.security import get_password_hash, verify_password
 from app.db.session import get_db
 from app.models import User
@@ -30,15 +34,9 @@ class UserService:
 
     async def change_password(self, user: User, data: ChangePassword) -> None:
         if not verify_password(data.current_password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Mật khẩu hiện tại không đúng",
-            )
+            raise BadRequestException(messages.CURRENT_PASSWORD_INCORRECT)
         if data.new_password == data.current_password:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Mật khẩu mới phải khác mật khẩu hiện tại",
-            )
+            raise BadRequestException(messages.NEW_PASSWORD_SAME_AS_CURRENT)
         await self.user_repo.update(
             user, {"hashed_password": get_password_hash(data.new_password)}
         )

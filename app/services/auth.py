@@ -1,9 +1,12 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import messages
+from app.core.exceptions import ConflictException, UnauthorizedException
 from app.core.security import (
     REFRESH_TOKEN_TYPE,
     create_access_token,
@@ -18,15 +21,6 @@ from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenResponse
 from app.schemas.user import UserCreate
-from sqlalchemy.exc import IntegrityError
-
-
-def _unauthorized(detail: str) -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detail,
-        headers={"WWW-Authenticate": "Bearer"},
-    )
 
 
 class AuthService:
@@ -43,7 +37,7 @@ class AuthService:
     async def register(self, data: UserCreate) -> User:
         email = data.email.lower()
         if await self.user_repo.get_by_email(email) is not None:
-            raise self._email_taken()
+            raise ConflictException(messages.EMAIL_ALREADY_REGISTERED)
         try:
             user = await self.user_repo.create(
                 email=email,
@@ -53,15 +47,8 @@ class AuthService:
             await self.session.commit()
         except IntegrityError:
             await self.session.rollback()
-            raise self._email_taken() from None
+            raise ConflictException(messages.EMAIL_ALREADY_REGISTERED) from None
         return user
-
-    @staticmethod
-    def _email_taken() -> HTTPException:
-        return HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email đã được đăng ký",
-        )
 
     async def login(self, email: str, password: str) -> TokenResponse:
         user = await self.user_repo.get_by_email(email.lower())
@@ -70,7 +57,7 @@ class AuthService:
             or not verify_password(password, user.hashed_password)
             or not user.is_active
         ):
-            raise _unauthorized("Sai email hoặc mật khẩu")
+            raise UnauthorizedException(messages.INVALID_CREDENTIALS)
         tokens = await self._issue_tokens(user.id)
         await self.session.commit()
         return tokens
@@ -81,15 +68,15 @@ class AuthService:
             jti = payload["jti"]
             user_id = int(payload["sub"])
         except (jwt.PyJWTError, KeyError, ValueError, TypeError):
-            raise _unauthorized("Refresh token không hợp lệ hoặc đã hết hạn") from None
+            raise UnauthorizedException(messages.INVALID_REFRESH_TOKEN) from None
 
         record = await self.token_repo.get_by_jti(jti, for_update=True)
         if record is None or record.revoked:
-            raise _unauthorized("Refresh token đã bị thu hồi")
+            raise UnauthorizedException(messages.REFRESH_TOKEN_REVOKED)
 
         user = await self.user_repo.get(user_id)
         if user is None or not user.is_active:
-            raise _unauthorized("Tài khoản không khả dụng")
+            raise UnauthorizedException(messages.ACCOUNT_UNAVAILABLE)
 
         await self.token_repo.revoke(record)
         tokens = await self._issue_tokens(user.id)
