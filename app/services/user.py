@@ -11,8 +11,12 @@ from app.schemas.user import ChangePassword, UserUpdate
 
 class UserService:
     def __init__(
-        self, user_repo: UserRepository, token_repo: RefreshTokenRepository
+        self,
+        session: AsyncSession,
+        user_repo: UserRepository,
+        token_repo: RefreshTokenRepository,
     ) -> None:
+        self.session = session
         self.user_repo = user_repo
         self.token_repo = token_repo
 
@@ -20,7 +24,9 @@ class UserService:
         changes = data.model_dump(exclude_none=True)
         if not changes:
             return user
-        return await self.user_repo.update(user, changes)
+        user = await self.user_repo.update(user, changes)
+        await self.session.commit()
+        return user
 
     async def change_password(self, user: User, data: ChangePassword) -> None:
         if not verify_password(data.current_password, user.hashed_password):
@@ -37,9 +43,12 @@ class UserService:
             user, {"hashed_password": get_password_hash(data.new_password)}
         )
         await self.token_repo.revoke_all_for_user(user.id)
+        await self.session.commit()
 
 
 def get_user_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserService:
-    return UserService(UserRepository(session), RefreshTokenRepository(session))
+    return UserService(
+        session, UserRepository(session), RefreshTokenRepository(session)
+    )
