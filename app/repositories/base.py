@@ -4,6 +4,7 @@ from sqlalchemy import func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
+from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -17,7 +18,7 @@ class BaseRepository(Generic[ModelT]):
         return await self.session.get(self.model, obj_id)
 
     async def get_multi(
-        self, *, page: int = 1, limit: int = 20
+        self, *, page: int = DEFAULT_PAGE, limit: int = DEFAULT_PAGE_SIZE
     ) -> tuple[list[ModelT], int]:
         total = await self.session.scalar(select(func.count()).select_from(self.model))
         stmt = (
