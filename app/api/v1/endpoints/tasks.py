@@ -1,9 +1,10 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
+from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.dependencies import CurrentUser
 from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.task import TaskService, get_task_service
-from app.dependencies import CurrentUser
 
 router = APIRouter()
 
@@ -21,8 +22,8 @@ async def create_task(
 @router.get("/", response_model=Page[TaskResponse])
 async def list_tasks(
     service: TaskServiceDep,
-    page: Annotated[int, Query(ge=1)] = 1,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    page: Annotated[int, Query(ge=DEFAULT_PAGE)] = DEFAULT_PAGE,
+    limit: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
 ) -> Page[TaskResponse]:
     tasks, total = await service.list_tasks(page, limit)
     return Page[TaskResponse](

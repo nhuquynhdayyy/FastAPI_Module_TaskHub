@@ -1,14 +1,14 @@
 from datetime import datetime
-from app.schemas.base import AppBaseModel
-from app.core.constants import (
-    TITLE_MIN_LENGTH,
-    TITLE_MAX_LENGTH,
-    DESCRIPTION_MAX_LENGTH,
-)
 
 from pydantic import ConfigDict, Field, field_validator
 
+from app.core.constants import (
+    DESCRIPTION_MAX_LENGTH,
+    TITLE_MAX_LENGTH,
+    TITLE_MIN_LENGTH,
+)
 from app.core.enums import TaskPriority, TaskStatus
+from app.schemas.base import AppBaseModel
 from typing import Any
 
 
@@ -18,7 +18,7 @@ class TaskCreate(AppBaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: datetime | None = None
-    assignee_id: int | None = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
 
 class TaskUpdate(AppBaseModel):
@@ -29,7 +29,7 @@ class TaskUpdate(AppBaseModel):
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     due_date: datetime | None = None
-    assignee_id: int | None = None
+    assignee_id: int | None = Field(default=None, ge=1)
 
     @field_validator("title", "status", "priority")
     @classmethod

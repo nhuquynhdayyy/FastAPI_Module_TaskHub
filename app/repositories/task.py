@@ -1,6 +1,7 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models import Task
 from app.repositories.base import BaseRepository
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TaskRepository(BaseRepository[Task]):

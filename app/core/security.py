@@ -22,11 +22,13 @@ def get_password_hash(password: str) -> str:
 def _create_token(
     subject: int, token_type: str, expires_delta: timedelta
 ) -> tuple[str, str, datetime]:
-    expires_at = datetime.now(timezone.utc) + expires_delta
+    now = datetime.now(timezone.utc)
+    expires_at = now + expires_delta
     jti = uuid.uuid4().hex
     payload: dict[str, Any] = {
         "sub": str(subject),
         "type": token_type,
+        "iat": now,
         "exp": expires_at,
         "jti": jti,
     }
@@ -35,7 +37,7 @@ def _create_token(
 
 
 def create_access_token(subject: int) -> str:
-    token, jti, expires_at = _create_token(
+    token, _, _ = _create_token(
         subject=subject,
         token_type=ACCESS_TOKEN_TYPE,
         expires_delta=settings.ACCESS_TOKEN_EXPIRE_DELTA,
@@ -43,18 +45,20 @@ def create_access_token(subject: int) -> str:
     return token
 
 
-def create_refresh_token(subject: int) -> tuple[str]:
-    token, jti, expires_at = _create_token(
+def create_refresh_token(subject: int) -> tuple[str, str, datetime]:
+    return _create_token(
         subject=subject,
         token_type=REFRESH_TOKEN_TYPE,
         expires_delta=settings.REFRESH_TOKEN_EXPIRE_DELTA,
     )
-    return token, jti, expires_at
 
 
-def decode_token(token: str, expected_type: str) -> dict[str, Any] | None:
+def decode_token(token: str, expected_type: str) -> dict[str, Any]:
     payload: dict[str, Any] = jwt.decode(
-        token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        token,
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+        options={"require": ["exp", "iat", "sub", "jti", "type"]},
     )
     if payload.get("type") != expected_type:
         raise jwt.InvalidTokenError("Invalid token type")

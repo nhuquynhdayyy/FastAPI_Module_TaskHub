@@ -1,20 +1,23 @@
+from dataclasses import dataclass
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status, Path
+from fastapi import Depends, Path
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import INSUFFICIENT_PERMISSION, WORKSPACE_NOT_FOUND
+from app.core.enums import UserRole, WorkspaceRole
+from app.core.exceptions import (
+    ForbiddenException,
+    NotFoundException,
+    UnauthorizedException,
+)
+from app.core.permissions import has_at_least
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
 from app.models import User, Workspace
 from app.repositories.user import UserRepository
-
-from dataclasses import dataclass
-from app.core.constants import INSUFFICIENT_PERMISSION, WORKSPACE_NOT_FOUND
-from app.core.enums import WorkspaceRole, UserRole
-from app.core.exceptions import ForbiddenException, NotFoundException
-from app.core.permissions import has_at_least
 from app.repositories.workspace import WorkspaceRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
@@ -24,19 +27,15 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Không thể xác thực thông tin đăng nhập",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = decode_token(token, ACCESS_TOKEN_TYPE)
-    except jwt.PyJWTError:
-        raise credentials_exception from None
+        user_id = int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError, TypeError):
+        raise UnauthorizedException() from None
 
-    user = await UserRepository(session).get(int(payload["sub"]))
+    user = await UserRepository(session).get(user_id)
     if user is None or not user.is_active:
-        raise credentials_exception
+        raise UnauthorizedException()
     return user
 
 

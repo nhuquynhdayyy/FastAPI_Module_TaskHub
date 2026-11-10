@@ -9,10 +9,13 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(RefreshToken, session)
 
-    async def get_by_jti(self, jti: str) -> RefreshToken | None:
-        return await self.session.scalar(
-            select(RefreshToken).where(RefreshToken.jti == jti)
-        )
+    async def get_by_jti(
+        self, jti: str, *, for_update: bool = False
+    ) -> RefreshToken | None:
+        stmt = select(RefreshToken).where(RefreshToken.jti == jti)
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return await self.session.scalar(stmt)
 
     async def revoke(self, token: RefreshToken) -> None:
         await self.update(token, {"revoked": True})
@@ -23,4 +26,4 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
             .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
             .values(revoked=True)
         )
-        await self.session.commit()
+        await self.session.flush()
