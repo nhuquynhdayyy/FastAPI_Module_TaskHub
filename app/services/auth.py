@@ -18,6 +18,7 @@ from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenResponse
 from app.schemas.user import UserCreate
+from sqlalchemy.exc import IntegrityError
 
 
 def _unauthorized(detail: str) -> HTTPException:
@@ -42,17 +43,25 @@ class AuthService:
     async def register(self, data: UserCreate) -> User:
         email = data.email.lower()
         if await self.user_repo.get_by_email(email) is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email đã được đăng ký",
+            raise self._email_taken()
+        try:
+            user = await self.user_repo.create(
+                email=email,
+                full_name=data.full_name,
+                hashed_password=get_password_hash(data.password),
             )
-        user = await self.user_repo.create(
-            email=email,
-            full_name=data.full_name,
-            hashed_password=get_password_hash(data.password),
-        )
-        await self.session.commit()
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise self._email_taken() from None
         return user
+
+    @staticmethod
+    def _email_taken() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email đã được đăng ký",
+        )
 
     async def login(self, email: str, password: str) -> TokenResponse:
         user = await self.user_repo.get_by_email(email.lower())
@@ -90,9 +99,10 @@ class AuthService:
     async def logout(self, refresh_token: str) -> None:
         try:
             payload = decode_token(refresh_token, REFRESH_TOKEN_TYPE)
-        except jwt.PyJWTError:
+            jti = payload["jti"]
+        except (jwt.PyJWTError, KeyError):
             return
-        record = await self.token_repo.get_by_jti(payload["jti"], for_update=True)
+        record = await self.token_repo.get_by_jti(jti, for_update=True)
         if record is not None and not record.revoked:
             await self.token_repo.revoke(record)
             await self.session.commit()
