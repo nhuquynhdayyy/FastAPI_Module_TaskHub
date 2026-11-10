@@ -1,13 +1,10 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
+from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.dependencies import CurrentUser
 from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.task import TaskService, get_task_service
-<<<<<<< HEAD
-from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-=======
-from app.dependencies import CurrentUser
->>>>>>> 243ee43 (feat: authentication for tasks)
 
 router = APIRouter()
 
