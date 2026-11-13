@@ -1,11 +1,10 @@
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, Query, status
-
+from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.dependencies import CurrentUser
 from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.task import TaskService, get_task_service
-from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 router = APIRouter()
 
@@ -13,8 +12,10 @@ TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_task(data: TaskCreate, service: TaskServiceDep) -> TaskResponse:
-    task = await service.create_task(data)
+async def create_task(
+    data: TaskCreate, user: CurrentUser, service: TaskServiceDep
+) -> TaskResponse:
+    task = await service.create_task(data, user.id)
     return TaskResponse.model_validate(task)
 
 
