@@ -4,7 +4,7 @@ from app.api.v1.router import api_router
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, register_exception_handlers
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,8 @@ app = FastAPI(
     description="API for TaskHub application",
     lifespan=lifespan,
 )
+
+register_exception_handlers(app)
 
 app.include_router(api_router, prefix="/api/v1")
 
