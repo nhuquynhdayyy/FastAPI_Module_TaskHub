@@ -9,11 +9,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from app.db.session import engine
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("TaskHub starting up")
     yield
+    await engine.dispose()
     logger.info("TaskHub shutting down")
 
 
