@@ -153,3 +153,30 @@ async def test_patch_project_description_null_clears_it(client):
 
     resp = await client.get(url, headers=headers)
     assert resp.json()["description"] is None
+
+
+import asyncio
+
+
+async def test_concurrent_add_member_only_one_succeeds(client):
+    headers = await auth_headers(client)
+    ws_id = await create_workspace(client, headers)
+
+    await client.post(
+        f"{API}/auth/register",
+        json={
+            "email": "quynh2@gmail.com",
+            "full_name": "Quynh 2",
+            "password": PASSWORD,
+        },
+    )
+
+    url = f"{API}/workspaces/{ws_id}/members"
+    payload = {"email": "quynh2@gmail.com", "role": "EDITOR"}
+    results = await asyncio.gather(
+        client.post(url, json=payload, headers=headers),
+        client.post(url, json=payload, headers=headers),
+    )
+    assert sorted(r.status_code for r in results) == [201, 409], [
+        r.text for r in results
+    ]
