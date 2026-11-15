@@ -13,13 +13,16 @@ from app.schemas.project import ProjectCreate, ProjectUpdate
 
 
 class ProjectService:
-    def __init__(self, repository: ProjectRepository) -> None:
+    def __init__(self, session: AsyncSession, repository: ProjectRepository) -> None:
+        self.session = session
         self.repository = repository
 
     async def create_project(self, workspace_id: int, data: ProjectCreate) -> Project:
-        return await self.repository.create(
+        project = await self.repository.create(
             workspace_id=workspace_id, **data.model_dump()
         )
+        await self.session.commit()
+        return project
 
     async def list_projects(
         self,
@@ -45,20 +48,27 @@ class ProjectService:
         changes = data.model_dump(exclude_unset=True)
         if not changes:
             return project
-        return await self.repository.update(project, changes)
+        project = await self.repository.update(project, changes)
+        await self.session.commit()
+        return project
 
     async def archive_project(self, workspace_id: int, project_id: int) -> Project:
         project = await self.get_project(workspace_id, project_id)
         if project.status == ProjectStatus.ARCHIVED:
             return project
-        return await self.repository.update(project, {"status": ProjectStatus.ARCHIVED})
+        project = await self.repository.update(
+            project, {"status": ProjectStatus.ARCHIVED}
+        )
+        await self.session.commit()
+        return project
 
     async def delete_project(self, workspace_id: int, project_id: int) -> None:
         project = await self.get_project(workspace_id, project_id)
         await self.repository.delete(project)
+        await self.session.commit()
 
 
 def get_project_service(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectService:
-    return ProjectService(ProjectRepository(session))
+    return ProjectService(session, ProjectRepository(session))
