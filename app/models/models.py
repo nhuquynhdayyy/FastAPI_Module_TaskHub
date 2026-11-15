@@ -7,7 +7,17 @@ from app.core.enums import (
 )
 from app.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Enum, DateTime, func, ForeignKey, Column, Table, Text
+from sqlalchemy import (
+    String,
+    Enum,
+    DateTime,
+    func,
+    ForeignKey,
+    Column,
+    Table,
+    Text,
+    Index,
+)
 from datetime import datetime
 from app.core.constants import TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH
 
@@ -97,6 +107,7 @@ task_labels = Table(
 
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (Index("ix_tasks_project_id_status", "project_id", "status"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True

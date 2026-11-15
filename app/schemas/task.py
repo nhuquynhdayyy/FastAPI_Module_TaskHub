@@ -1,16 +1,14 @@
 from datetime import datetime
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field
 
 from app.core.constants import (
     DESCRIPTION_MAX_LENGTH,
     TITLE_MAX_LENGTH,
     TITLE_MIN_LENGTH,
 )
-from app.core import messages
 from app.core.enums import TaskPriority, TaskStatus
-from app.schemas.base import AppBaseModel
-from typing import Any
+from app.schemas.base import AppBaseModel, UpdateModel
 
 
 class TaskCreate(AppBaseModel):
@@ -22,7 +20,9 @@ class TaskCreate(AppBaseModel):
     assignee_id: int | None = Field(default=None, ge=1)
 
 
-class TaskUpdate(AppBaseModel):
+class TaskUpdate(UpdateModel):
+    non_nullable = ("title", "status", "priority")
+
     title: str | None = Field(
         default=None, min_length=TITLE_MIN_LENGTH, max_length=TITLE_MAX_LENGTH
     )
@@ -31,13 +31,6 @@ class TaskUpdate(AppBaseModel):
     priority: TaskPriority | None = None
     due_date: datetime | None = None
     assignee_id: int | None = Field(default=None, ge=1)
-
-    @field_validator("title", "status", "priority")
-    @classmethod
-    def not_null(cls, value: Any) -> Any:
-        if value is None:
-            raise ValueError(messages.FIELD_CANNOT_BE_NULL)
-        return value
 
 
 class TaskResponse(AppBaseModel):
