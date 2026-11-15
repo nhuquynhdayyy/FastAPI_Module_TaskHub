@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     DATABASE_URL: str = Field(min_length=32)
     DEFAULT_USER_ID: int = 1
-    DEFAULT_PROJECT_ID: int = 1
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30

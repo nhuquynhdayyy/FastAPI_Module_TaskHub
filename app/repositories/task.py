@@ -20,22 +20,12 @@ class TaskRepository(BaseRepository[Task]):
         priority: TaskPriority | None = None,
         assignee_id: int | None = None,
     ) -> tuple[list[Task], int]:
-        conditions = [Task.project_id == project_id]
+        stmt = select(Task).where(Task.project_id == project_id)
         if status is not None:
-            conditions.append(Task.status == status)
+            stmt = stmt.where(Task.status == status)
         if priority is not None:
-            conditions.append(Task.priority == priority)
+            stmt = stmt.where(Task.priority == priority)
         if assignee_id is not None:
-            conditions.append(Task.assignee_id == assignee_id)
-
-        total = await self.session.scalar(
-            select(func.count()).select_from(Task).where(*conditions)
-        )
-        result = await self.session.scalars(
-            select(Task)
-            .where(*conditions)
-            .order_by(Task.created_at.desc(), Task.id.desc())
-            .offset((page - 1) * limit)
-            .limit(limit)
-        )
-        return list(result.all()), total or 0
+            stmt = stmt.where(Task.assignee_id == assignee_id)
+        stmt = stmt.order_by(Task.created_at.desc(), Task.id.desc())
+        return await self.paginate(stmt, page=page, limit=limit)
