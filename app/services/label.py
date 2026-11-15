@@ -12,12 +12,19 @@ from app.models import Label, Task
 from app.repositories.label import LabelRepository
 from app.schemas.label import LabelCreate, LabelUpdate
 from app.services.task import ensure_project_active
+from app.services.cache_service import CacheService, get_cache_service
 
 
 class LabelService:
-    def __init__(self, session: AsyncSession, repository: LabelRepository) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        repository: LabelRepository,
+        cache: CacheService,
+    ) -> None:
         self.session = session
         self.repository = repository
+        self.cache = cache
 
     async def list_labels(self, project_id: int) -> list[Label]:
         return await self.repository.list_by_project(project_id)
@@ -52,12 +59,14 @@ class LabelService:
         except IntegrityError:
             await self.session.rollback()
             raise ConflictException(messages.LABEL_NAME_EXISTS) from None
+        await self.cache.invalidate_project(project_id)
         return label
 
     async def delete_label(self, project_id: int, label_id: int) -> None:
         label = await self.get_label(project_id, label_id)
         await self.repository.delete(label)
         await self.session.commit()
+        await self.cache.invalidate_project(project_id)
 
     async def assign_label(self, access: TaskAccess, label_id: int) -> Task:
         ensure_project_active(access.project)
@@ -71,6 +80,7 @@ class LabelService:
         except IntegrityError:
             await self.session.rollback()
             raise ConflictException(messages.LABEL_ALREADY_ASSIGNED) from None
+        await self.cache.invalidate_project(access.project.id)
         return task
 
     async def remove_label(self, access: TaskAccess, label_id: int) -> None:
@@ -81,9 +91,11 @@ class LabelService:
             raise NotFoundException(messages.LABEL_NOT_ASSIGNED)
         task.labels.remove(label)
         await self.session.commit()
+        await self.cache.invalidate_project(access.project.id)
 
 
 def get_label_service(
     session: Annotated[AsyncSession, Depends(get_db)],
+    cache: Annotated[CacheService, Depends(get_cache_service)],
 ) -> LabelService:
-    return LabelService(session, LabelRepository(session))
+    return LabelService(session, LabelRepository(session), cache)
