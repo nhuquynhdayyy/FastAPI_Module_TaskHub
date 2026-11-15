@@ -12,7 +12,6 @@ from app.models.base import Base
 from app.db.session import get_db
 from app.main import app
 
-# Thay đổi connection string cho khớp với user/password/port Postgres của bạn
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5434/taskhub_test",
@@ -21,12 +20,24 @@ assert "test" in TEST_DATABASE_URL, "TEST_DATABASE_URL phải trỏ vào DB test
 
 
 @pytest_asyncio.fixture
-async def client():
+async def engine():
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    await engine.dispose()
 
+
+@pytest_asyncio.fixture
+async def session(engine):
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        yield session
+
+
+@pytest_asyncio.fixture
+async def client(engine):
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async def override_get_db():
@@ -43,4 +54,3 @@ async def client():
         yield ac
 
     app.dependency_overrides.clear()
-    await engine.dispose()
