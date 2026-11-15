@@ -13,6 +13,11 @@ from app.models.base import Base
 from app.db.session import get_db
 from app.main import app
 
+import pytest
+from fakeredis import FakeAsyncRedis
+
+from app.core.redis import get_redis
+
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5434/taskhub_test",
@@ -106,3 +111,11 @@ async def world(client):
         "outsider": outsider,
         "url": f"{API}/projects/{project_id}/tasks",
     }
+
+
+@pytest.fixture(autouse=True)
+def fake_redis():
+    redis = FakeAsyncRedis(decode_responses=True)
+    app.dependency_overrides[get_redis] = lambda: redis
+    yield redis
+    app.dependency_overrides.pop(get_redis, None)

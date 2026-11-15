@@ -9,11 +9,16 @@ from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.task import TaskService, get_task_service
 
+from pydantic import ValidationError
+
+from app.services.cache_service import CacheService, get_cache_service
+
 project_router = APIRouter()
 
 router = APIRouter()
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+CacheDep = Annotated[CacheService, Depends(get_cache_service)]
 
 
 @project_router.post(
@@ -30,21 +35,44 @@ async def create_task(
 async def list_tasks(
     access: ProjectViewer,
     service: TaskServiceDep,
+    cache: CacheDep,
     page: PageQuery = 1,
     limit: LimitQuery = 20,
     status: TaskStatus | None = None,
     priority: TaskPriority | None = None,
     assignee_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> Page[TaskResponse]:
-    tasks, total = await service.list_tasks(
-        access.project.id, page, limit, status, priority, assignee_id
+    project_id = access.project.id
+
+    version = await cache.get_version(project_id)
+    key = cache.tasks_key(
+        project_id,
+        version,
+        status=status,
+        priority=priority,
+        assignee=assignee_id,
+        page=page,
+        limit=limit,
     )
-    return Page[TaskResponse](
+
+    cached = await cache.get_json(key)
+    if cached is not None:
+        try:
+            return Page[TaskResponse].model_validate(cached)
+        except ValidationError:
+            pass
+
+    tasks, total = await service.list_tasks(
+        project_id, page, limit, status, priority, assignee_id
+    )
+    result = Page[TaskResponse](
         items=[TaskResponse.model_validate(t) for t in tasks],
         total=total,
         page=page,
         limit=limit,
     )
+    await cache.set_json(key, result.model_dump(mode="json"))
+    return result
 
 
 @router.get("/{task_id}", response_model=TaskResponse)

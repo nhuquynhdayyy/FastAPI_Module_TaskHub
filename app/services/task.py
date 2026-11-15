@@ -10,6 +10,10 @@ from app.repositories.task import TaskRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 
+from fastapi import Depends
+
+from app.services.cache_service import CacheService, get_cache_service
+
 
 def ensure_project_active(project: Project) -> None:
     if project.status == ProjectStatus.ARCHIVED:
@@ -22,10 +26,12 @@ class TaskService:
         session: AsyncSession,
         repository: TaskRepository,
         workspace_repository: WorkspaceRepository,
+        cache: CacheService,
     ) -> None:
         self.session = session
         self.repository = repository
         self.workspace_repository = workspace_repository
+        self.cache = cache
 
     async def _ensure_assignee_in_workspace(
         self, workspace_id: int, assignee_id: int | None
@@ -63,6 +69,7 @@ class TaskService:
             created_by=access.user.id,
         )
         await self.session.commit()
+        await self.cache.invalidate_project(access.project.id)
         return task
 
     async def update_task(self, access: TaskAccess, data: TaskUpdate) -> Task:
@@ -75,12 +82,20 @@ class TaskService:
         )
         task = await self.repository.update(access.task, changes)
         await self.session.commit()
+        await self.cache.invalidate_project(access.project.id)
         return task
 
     async def delete_task(self, task: Task) -> None:
+        project_id = task.project_id
         await self.repository.delete(task)
         await self.session.commit()
+        await self.cache.invalidate_project(project_id)
 
 
-def get_task_service(session: DBSession) -> TaskService:
-    return TaskService(session, TaskRepository(session), WorkspaceRepository(session))
+def get_task_service(
+    session: DBSession,
+    cache: CacheService = Depends(get_cache_service),
+) -> TaskService:
+    return TaskService(
+        session, TaskRepository(session), WorkspaceRepository(session), cache
+    )
