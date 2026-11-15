@@ -124,3 +124,32 @@ async def test_delete_project_persists(client):
         f"{API}/workspaces/{ws_id}/projects/{project_id}", headers=headers
     )
     assert resp.status_code == 404
+
+
+async def test_patch_project_name_null_returns_422(client):
+    headers = await auth_headers(client)
+    ws_id = await create_workspace(client, headers)
+    project_id = await create_project(client, headers, ws_id)
+
+    resp = await client.patch(
+        f"{API}/workspaces/{ws_id}/projects/{project_id}",
+        json={"name": None},
+        headers=headers,
+    )
+    assert resp.status_code == 422, resp.text
+
+
+async def test_patch_project_description_null_clears_it(client):
+    headers = await auth_headers(client)
+    ws_id = await create_workspace(client, headers)
+    project_id = await create_project(client, headers, ws_id)
+    url = f"{API}/workspaces/{ws_id}/projects/{project_id}"
+
+    resp = await client.patch(url, json={"description": "Mô tả"}, headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    resp = await client.patch(url, json={"description": None}, headers=headers)
+    assert resp.status_code == 200, resp.text
+
+    resp = await client.get(url, headers=headers)
+    assert resp.json()["description"] is None

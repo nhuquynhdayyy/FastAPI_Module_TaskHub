@@ -12,6 +12,6 @@ class UpdateModel(AppBaseModel):
     @model_validator(mode="after")
     def reject_null(self) -> Self:
         for field in self.model_fields_set:
-            if field not in self.non_nullable and getattr(self, field) is None:
+            if field in self.non_nullable and getattr(self, field) is None:
                 raise ValueError(f"{field} must not be null")
         return self
