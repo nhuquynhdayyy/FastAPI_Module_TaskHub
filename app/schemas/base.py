@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, model_validator
 from typing import ClassVar, Self
+from app.core import messages
 
 
 class AppBaseModel(BaseModel):
@@ -13,5 +14,5 @@ class UpdateModel(AppBaseModel):
     def reject_null(self) -> Self:
         for field in self.model_fields_set:
             if field in self.non_nullable and getattr(self, field) is None:
-                raise ValueError(f"{field} must not be null")
+                raise ValueError(messages.FIELD_MUST_NOT_BE_NULL.format(field=field))
         return self

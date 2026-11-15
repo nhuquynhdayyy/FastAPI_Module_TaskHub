@@ -7,6 +7,7 @@ from app.core.constants import (
     TITLE_MAX_LENGTH,
     TITLE_MIN_LENGTH,
 )
+from app.core import messages
 from app.core.enums import TaskPriority, TaskStatus
 from app.schemas.base import AppBaseModel
 from typing import Any
@@ -35,7 +36,7 @@ class TaskUpdate(AppBaseModel):
     @classmethod
     def not_null(cls, value: Any) -> Any:
         if value is None:
-            raise ValueError("Field cannot be null")
+            raise ValueError(messages.FIELD_CANNOT_BE_NULL)
         return value
 
 

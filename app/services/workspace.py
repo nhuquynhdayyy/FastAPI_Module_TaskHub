@@ -3,12 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import (
-    ALREADY_MEMBER,
-    CANNOT_REMOVE_OWNER,
-    MEMBER_NOT_FOUND,
-    USER_NOT_FOUND,
-)
+from app.core import messages
 from app.core.exceptions import (
     ConflictException,
     ForbiddenException,
@@ -63,10 +58,10 @@ class WorkspaceService:
     async def add_member(self, workspace_id: int, data: MemberAdd) -> WorkspaceMember:
         user = await self.user_repo.get_by_email(data.email.lower())
         if user is None:
-            raise NotFoundException(USER_NOT_FOUND)
+            raise NotFoundException(messages.USER_NOT_FOUND)
 
         if await self.workspace_repo.get_member(workspace_id, user.id) is not None:
-            raise ConflictException(ALREADY_MEMBER)
+            raise ConflictException(messages.ALREADY_MEMBER)
 
         try:
             member = await self.workspace_repo.add_member(
@@ -75,16 +70,16 @@ class WorkspaceService:
             await self.session.commit()
         except IntegrityError:
             await self.session.rollback()
-            raise ConflictException(ALREADY_MEMBER) from None
+            raise ConflictException(messages.ALREADY_MEMBER) from None
         return member
 
     async def remove_member(self, workspace: Workspace, user_id: int) -> None:
         if user_id == workspace.owner_id:
-            raise ForbiddenException(CANNOT_REMOVE_OWNER)
+            raise ForbiddenException(messages.CANNOT_REMOVE_OWNER)
 
         member = await self.workspace_repo.get_member(workspace.id, user_id)
         if member is None:
-            raise NotFoundException(MEMBER_NOT_FOUND)
+            raise NotFoundException(messages.MEMBER_NOT_FOUND)
 
         await self.workspace_repo.remove_member(member)
         await self.session.commit()

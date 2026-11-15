@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import PROJECT_NOT_FOUND
+from app.core import messages
 from app.core.enums import ProjectStatus
 from app.core.exceptions import NotFoundException
 from app.db.session import get_db
@@ -38,7 +38,7 @@ class ProjectService:
     async def get_project(self, workspace_id: int, project_id: int) -> Project:
         project = await self.repository.get_in_workspace(workspace_id, project_id)
         if project is None:
-            raise NotFoundException(PROJECT_NOT_FOUND)
+            raise NotFoundException(messages.PROJECT_NOT_FOUND)
         return project
 
     async def update_project(

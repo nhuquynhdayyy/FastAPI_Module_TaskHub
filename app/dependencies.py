@@ -6,7 +6,7 @@ from fastapi import Depends, Path
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INSUFFICIENT_PERMISSION, WORKSPACE_NOT_FOUND
+from app.core import messages
 from app.core.enums import UserRole, WorkspaceRole
 from app.core.exceptions import (
     ForbiddenException,
@@ -59,18 +59,18 @@ def require_workspace_role(minimum: WorkspaceRole):
 
         workspace = await repo.get(workspace_id)
         if workspace is None:
-            raise NotFoundException(WORKSPACE_NOT_FOUND)
+            raise NotFoundException(messages.WORKSPACE_NOT_FOUND)
 
         if user.role == UserRole.ADMIN:
             role = WorkspaceRole.OWNER
         else:
             member = await repo.get_member(workspace_id, user.id)
             if member is None:
-                raise NotFoundException(WORKSPACE_NOT_FOUND)
+                raise NotFoundException(messages.WORKSPACE_NOT_FOUND)
             role = member.role
 
         if not has_at_least(role, minimum):
-            raise ForbiddenException(INSUFFICIENT_PERMISSION)
+            raise ForbiddenException(messages.INSUFFICIENT_PERMISSION)
 
         return WorkspaceAccess(workspace=workspace, user=user, role=role)
 
