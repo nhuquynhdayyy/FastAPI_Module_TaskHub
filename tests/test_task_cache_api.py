@@ -2,7 +2,6 @@ import pytest
 
 from app.core.redis import get_redis
 from app.main import app
-from app.services.cache_service import CacheService
 from app.services.task import TaskService
 from redis.exceptions import ConnectionError as RedisConnectionError
 

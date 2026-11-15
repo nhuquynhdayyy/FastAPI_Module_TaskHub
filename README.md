@@ -2,14 +2,14 @@
 
 ## Tech stack
 
-FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16 | pytest
+FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16 | Redis 7 | pytest
 
 ## Cấu trúc project
 
 ```
 app/
 ├── api/v1/endpoints/   # Tầng API: nhận request, trả response
-├── services/           # Business logic
+├── services/           # Business logic (gồm cache_service.py, email.py)
 ├── repositories/       # Truy cập DB (BaseRepository[T] + CRUD async)
 ├── models/             # SQLAlchemy models
 ├── schemas/            # Pydantic schemas
@@ -36,18 +36,29 @@ pip install -r requirements.txt
 docker run --name taskhub-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskhub -p 5434:5432 -d postgres:16
 ```
 
-### 3. Cấu hình biến môi trường
+### 3. Chạy Redis bằng Docker
 
-Sao chép `.env.example` thành `.env` rồi chỉnh giá trị
+```bash
+docker run --name taskhub-redis -p 6379:6379 -d redis:7
+docker exec -it taskhub-redis redis-cli ping
+```
 
+### 4. Cấu hình biến môi trường
 
-### 4. Tạo bảng (migration)
+Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. Các biến liên quan Redis:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `REDIS_URL` | (bắt buộc) | Địa chỉ Redis, ví dụ `redis://localhost:6379/0`. Thiếu thì app báo lỗi ngay khi khởi động |
+| `CACHE_TTL_SECONDS` | `60` | Thời gian sống của cache, phải lớn hơn 0 |
+
+### 5. Tạo bảng (migration)
 
 ```bash
 alembic upgrade head
 ```
 
-### 5. Chạy ứng dụng
+### 6. Chạy ứng dụng
 
 ```bash
 uvicorn app.main:app --reload
@@ -157,9 +168,9 @@ Các quy tắc nghiệp vụ:
 | POST | `/api/v1/workspaces/{workspace_id}/projects/{project_id}/archive` | Lưu trữ project | EDITOR+ |
 | DELETE | `/api/v1/workspaces/{workspace_id}/projects/{project_id}` | Xóa project | OWNER |
 | POST | `/api/v1/projects/{project_id}/tasks` | Tạo task (`created_by` là user đăng nhập) | EDITOR+ |
-| GET | `/api/v1/projects/{project_id}/tasks` | Danh sách task (lọc `status`, `priority`, `assignee_id`; phân trang `page`, `limit`) | VIEWER+ |
+| GET | `/api/v1/projects/{project_id}/tasks` | Danh sách task (lọc `status`, `priority`, `assignee_id`; phân trang `page`, `limit`). Có cache Redis, xem mục Caching | VIEWER+ |
 | GET | `/api/v1/tasks/{task_id}` | Chi tiết task | VIEWER+ |
-| PATCH | `/api/v1/tasks/{task_id}` | Sửa task, giao việc, đổi status, priority, due_date | EDITOR+ |
+| PATCH | `/api/v1/tasks/{task_id}` | Sửa task, giao việc, đổi status, priority, due_date. Giao việc cho người khác thì gửi email nền | EDITOR+ |
 | DELETE | `/api/v1/tasks/{task_id}` | Xóa task (kèm bình luận) | EDITOR+ |
 | GET | `/api/v1/projects/{project_id}/labels` | Danh sách label của project | VIEWER+ |
 | POST | `/api/v1/projects/{project_id}/labels` | Tạo label | EDITOR+ |
@@ -177,17 +188,35 @@ Các quy tắc nghiệp vụ:
 GET /api/v1/projects/1/tasks?status=IN_PROGRESS&priority=HIGH&assignee_id=3&page=1&limit=10
 ```
 
+## Caching (Redis)
+
+`GET /api/v1/projects/{project_id}/tasks` được cache trong Redis, mỗi tổ hợp bộ lọc và trang là một khóa riêng.
+
+| Vấn đề | Quyết định | Lý do |
+|---|---|---|
+| Phân quyền và cache | Dependency kiểm tra quyền luôn chạy trước khi đọc cache | Cache không được lách RBAC: user bị xóa khỏi workspace vẫn nhận 404 dù cache còn dữ liệu |
+| Khóa cache | `tasks:{project_id}:v{version}:{status}:{priority}:{assignee}:{page}:{limit}` | Mỗi bộ lọc một khóa |
+| Invalidate | Mỗi project có bộ đếm `tasks:ver:{project_id}`; có thay đổi thì `INCR` | Khóa cũ bị bỏ rơi và tự hết hạn theo TTL. Không cần `SCAN` để xóa hàng loạt, `INCR` là nguyên tử |
+| Thời điểm invalidate | Sau khi `commit()` thành công | Tránh việc request đọc xen vào lưu dữ liệu cũ dưới khóa mới |
+| TTL | 60 giây (`CACHE_TTL_SECONDS`) | Lưới an toàn: lỡ quên invalidate thì dữ liệu sai tối đa 60 giây |
+| Redis lỗi | Fail-open: ghi log cảnh báo, đọc thẳng từ DB | Cache chỉ là tối ưu, không được làm hỏng chức năng chính |
+
+Các thao tác làm cache của project mất hiệu lực: tạo, sửa, xóa task; gán, bỏ label khỏi task; sửa, xóa label. Thao tác thất bại (403, 404, 409) không làm mất hiệu lực. Tạo label mới không ảnh hưởng vì label chưa gắn vào task nào.
+
+## Email nền khi giao việc
+
+Khi giao task cho người khác (lúc tạo hoặc sửa), người được giao nhận một email, gửi bằng `BackgroundTasks` của FastAPI nên response trả về ngay.
+
+- Chỉ gửi khi `assignee_id` thật sự đổi, người được giao khác người đang thao tác, và đã commit thành công.
+- Hàm nền chỉ nhận giá trị thuần (email, tiêu đề, id), không nhận object ORM, vì session DB đã đóng khi tác vụ chạy.
+- Email hiện là email giả: hàm `send_email` trong `app/services/email.py` chỉ ghi log. Thay bằng SMTP sau này chỉ cần sửa trong hàm này.
+- Lỗi khi gửi chỉ được ghi log, không ảnh hưởng response.
+
 ## Test
 
 ```bash
 pytest -q
 ```
-
-| File | Nội dung |
-|---|---|
-| `tests/test_tasks_api.py` | Task: quyền, lọc, phân trang, project ARCHIVED, assignee |
-| `tests/test_labels_api.py` | Label: quyền, gán label khác project |
-| `tests/test_comments_api.py` | Comment: thêm, xóa theo tác giả hoặc OWNER, 404 không lộ tài nguyên |
 
 ## Migration
 
