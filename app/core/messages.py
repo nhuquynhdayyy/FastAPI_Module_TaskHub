@@ -31,3 +31,7 @@ LABEL_NOT_FOUND = "Không tìm thấy nhãn"
 LABEL_NAME_EXISTS = "Tên nhãn đã tồn tại trong dự án"
 LABEL_ALREADY_ASSIGNED = "Nhãn đã được gán cho công việc"
 LABEL_NOT_ASSIGNED = "Nhãn chưa được gán cho công việc"
+COMMENT_NOT_FOUND = "Không tìm thấy bình luận"
+COMMENT_DELETE_FORBIDDEN = (
+    "Chỉ tác giả hoặc chủ sở hữu workspace mới được xóa bình luận"
+)

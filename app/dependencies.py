@@ -16,11 +16,12 @@ from app.core.exceptions import (
 from app.core.permissions import has_at_least
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
-from app.models import Project, Task, User, Workspace
+from app.models import Project, Task, User, Workspace, Comment
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.repositories.comment import CommentRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
@@ -159,6 +160,50 @@ def require_task_role(minimum: WorkspaceRole):
     return dependency
 
 
+@dataclass
+class CommentAccess:
+    comment: Comment
+    task: Task
+    project: Project
+    workspace: Workspace
+    user: User
+    role: WorkspaceRole
+
+
+def require_comment_role(minimum: WorkspaceRole):
+    async def dependency(
+        comment_id: Annotated[int, Path(ge=1)],
+        user: CurrentUser,
+        session: Annotated[AsyncSession, Depends(get_db)],
+    ) -> CommentAccess:
+        comment = await CommentRepository(session).get(comment_id)
+        if comment is None:
+            raise NotFoundException(messages.COMMENT_NOT_FOUND)
+        task = await TaskRepository(session).get(comment.task_id)
+        if task is None:  # không xảy ra nhờ khóa ngoại, phòng hờ
+            raise NotFoundException(messages.COMMENT_NOT_FOUND)
+        project = await ProjectRepository(session).get(task.project_id)
+        if project is None:
+            raise NotFoundException(messages.COMMENT_NOT_FOUND)
+        access = await resolve_workspace_access(
+            session,
+            project.workspace_id,
+            user,
+            minimum,
+            messages.COMMENT_NOT_FOUND,
+        )
+        return CommentAccess(
+            comment=comment,
+            task=task,
+            project=project,
+            workspace=access.workspace,
+            user=user,
+            role=access.role,
+        )
+
+    return dependency
+
+
 V, E, O = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
 
 WorkspaceViewer = Annotated[WorkspaceAccess, Depends(require_workspace_role(V))]
@@ -171,3 +216,5 @@ ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(E))]
 TaskViewer = Annotated[TaskAccess, Depends(require_task_role(V))]
 TaskEditor = Annotated[TaskAccess, Depends(require_task_role(E))]
 TaskOwner = Annotated[TaskAccess, Depends(require_task_role(O))]
+
+CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(V))]
