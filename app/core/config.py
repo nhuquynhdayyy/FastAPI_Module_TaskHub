@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REDIS_URL: str
+    CACHE_TTL_SECONDS: int = 60
 
     @property
     def ACCESS_TOKEN_EXPIRE_DELTA(self) -> timedelta:

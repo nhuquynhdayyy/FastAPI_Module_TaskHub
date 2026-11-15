@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-test-secret-key-0123456789")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
