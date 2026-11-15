@@ -17,6 +17,7 @@ from sqlalchemy import (
     Table,
     Text,
     Index,
+    UniqueConstraint,
 )
 from datetime import datetime
 from app.core.constants import TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH
@@ -138,7 +139,7 @@ class Task(Base):
     assignee: Mapped["User | None"] = relationship(foreign_keys=[assignee_id])
     creator: Mapped["User"] = relationship(foreign_keys=[created_by])
     labels: Mapped[list["Label"]] = relationship(
-        secondary=task_labels, back_populates="tasks"
+        secondary=task_labels, back_populates="tasks", lazy="selectin"
     )
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
@@ -147,6 +148,9 @@ class Task(Base):
 
 class Label(Base):
     __tablename__ = "labels"
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_labels_project_id_name"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True

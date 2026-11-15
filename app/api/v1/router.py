@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import tasks, auth, users, workspaces, projects
+from app.api.v1.endpoints import tasks, auth, users, workspaces, projects, labels
 from app.dependencies import get_current_user
 from app.api.v1.params import PROTECTED_RESPONSES
 
@@ -29,5 +29,17 @@ api_router.include_router(
     projects.router,
     prefix="/workspaces/{workspace_id}/projects",
     tags=["Projects"],
+    responses=PROTECTED_RESPONSES,
+)
+api_router.include_router(
+    labels.project_router,
+    prefix="/projects/{project_id}/labels",
+    tags=["Labels"],
+    responses=PROTECTED_RESPONSES,
+)
+api_router.include_router(
+    labels.task_router,
+    prefix="/tasks/{task_id}/labels",
+    tags=["Labels"],
     responses=PROTECTED_RESPONSES,
 )

@@ -9,6 +9,7 @@ from app.core.constants import (
 )
 from app.core.enums import TaskPriority, TaskStatus
 from app.schemas.base import AppBaseModel, UpdateModel
+from app.schemas.label import LabelResponse
 
 
 class TaskCreate(AppBaseModel):
@@ -46,3 +47,4 @@ class TaskResponse(AppBaseModel):
     due_date: datetime | None
     created_by: int
     created_at: datetime
+    labels: list[LabelResponse]

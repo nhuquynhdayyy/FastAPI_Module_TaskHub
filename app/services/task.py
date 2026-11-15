@@ -11,6 +11,11 @@ from app.repositories.workspace import WorkspaceRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
+def ensure_project_active(project: Project) -> None:
+    if project.status == ProjectStatus.ARCHIVED:
+        raise ConflictException(messages.PROJECT_ARCHIVED)
+
+
 class TaskService:
     def __init__(
         self,
@@ -21,11 +26,6 @@ class TaskService:
         self.session = session
         self.repository = repository
         self.workspace_repository = workspace_repository
-
-    @staticmethod
-    def _ensure_project_active(project: Project) -> None:
-        if project.status == ProjectStatus.ARCHIVED:
-            raise ConflictException(messages.PROJECT_ARCHIVED)
 
     async def _ensure_assignee_in_workspace(
         self, workspace_id: int, assignee_id: int | None
@@ -55,7 +55,7 @@ class TaskService:
         )
 
     async def create_task(self, access: ProjectAccess, data: TaskCreate) -> Task:
-        self._ensure_project_active(access.project)
+        ensure_project_active(access.project)
         await self._ensure_assignee_in_workspace(access.workspace.id, data.assignee_id)
         task = await self.repository.create(
             **data.model_dump(),
@@ -66,7 +66,7 @@ class TaskService:
         return task
 
     async def update_task(self, access: TaskAccess, data: TaskUpdate) -> Task:
-        self._ensure_project_active(access.project)
+        ensure_project_active(access.project)
         changes = data.model_dump(exclude_unset=True)
         if not changes:
             return access.task
