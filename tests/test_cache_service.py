@@ -1,5 +1,5 @@
 import pytest
-from fakeredis import FakeAsyncRedis
+from fakeredis import FakeAsyncRedis, FakeServer
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.services.cache_service import CacheService
@@ -7,7 +7,9 @@ from app.services.cache_service import CacheService
 
 @pytest.fixture
 def cache() -> CacheService:
-    return CacheService(FakeAsyncRedis(decode_responses=True), ttl=60)
+    return CacheService(
+        FakeAsyncRedis(server=FakeServer(), decode_responses=True), ttl=60
+    )
 
 
 class BrokenRedis:
@@ -67,3 +69,10 @@ async def test_fail_open_when_redis_down():
     assert await cache.get_json("k") is None
     await cache.set_json("k", {"a": 1})
     await cache.invalidate_project(1)
+
+
+@pytest.fixture
+def cache() -> CacheService:
+    return CacheService(
+        FakeAsyncRedis(server=FakeServer(), decode_responses=True), ttl=60
+    )

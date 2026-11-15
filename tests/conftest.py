@@ -14,7 +14,7 @@ from app.db.session import get_db
 from app.main import app
 
 import pytest
-from fakeredis import FakeAsyncRedis
+from fakeredis import FakeAsyncRedis, FakeServer
 
 from app.core.redis import get_redis
 
@@ -115,7 +115,7 @@ async def world(client):
 
 @pytest.fixture(autouse=True)
 def fake_redis():
-    redis = FakeAsyncRedis(decode_responses=True)
+    redis = FakeAsyncRedis(server=FakeServer(), decode_responses=True)
     app.dependency_overrides[get_redis] = lambda: redis
     yield redis
     app.dependency_overrides.pop(get_redis, None)
