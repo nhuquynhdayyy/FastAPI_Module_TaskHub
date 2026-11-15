@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.constants import ASSIGNEE_NOT_FOUND, TASK_NOT_FOUND
+from app.core import messages
 from app.core.exceptions import NotFoundException
 from app.db.session import DBSession
 from app.models import Task
@@ -26,7 +26,7 @@ class TaskService:
             assignee_id is not None
             and await self.user_repository.get(assignee_id) is None
         ):
-            raise NotFoundException(ASSIGNEE_NOT_FOUND)
+            raise NotFoundException(messages.ASSIGNEE_NOT_FOUND)
 
     async def list_tasks(self, page: int, limit: int) -> tuple[list[Task], int]:
         return await self.repository.get_multi(page=page, limit=limit)
@@ -34,7 +34,7 @@ class TaskService:
     async def get_task(self, task_id: int) -> Task:
         task = await self.repository.get(task_id)
         if task is None:
-            raise NotFoundException(TASK_NOT_FOUND)
+            raise NotFoundException(messages.TASK_NOT_FOUND)
         return task
 
     async def create_task(self, data: TaskCreate, user_id: int) -> Task:
