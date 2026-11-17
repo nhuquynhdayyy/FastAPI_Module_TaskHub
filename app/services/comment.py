@@ -4,13 +4,13 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
-from app.core.enums import WorkspaceRole
 from app.core.exceptions import ForbiddenException
 from app.db.session import get_db
 from app.dependencies import CommentAccess, TaskAccess
 from app.models import Comment
 from app.repositories.comment import CommentRepository
 from app.schemas.comment import CommentCreate
+from app.core.permissions import can_delete_comment
 
 
 class CommentService:
@@ -28,8 +28,11 @@ class CommentService:
         return comment
 
     async def delete_comment(self, access: CommentAccess) -> None:
-        is_author = access.comment.author_id == access.user.id
-        if not is_author and access.role != WorkspaceRole.OWNER:
+        if not can_delete_comment(
+            author_id=access.comment.author_id,
+            user_id=access.user.id,
+            role=access.role,
+        ):
             raise ForbiddenException(messages.COMMENT_DELETE_FORBIDDEN)
         await self.repository.delete(access.comment)
         await self.session.commit()

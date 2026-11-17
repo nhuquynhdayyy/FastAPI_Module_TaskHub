@@ -9,3 +9,7 @@ ROLE_RANK: dict[WorkspaceRole, int] = {
 
 def has_at_least(role: WorkspaceRole, minimum: WorkspaceRole) -> bool:
     return ROLE_RANK[role] >= ROLE_RANK[minimum]
+
+
+def can_delete_comment(*, author_id: int, user_id: int, role: WorkspaceRole) -> bool:
+    return author_id == user_id or role == WorkspaceRole.OWNER
