@@ -15,6 +15,7 @@ from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
 from sqlalchemy.exc import IntegrityError
+from app.core.pagination import Pagination
 
 
 class WorkspaceService:
@@ -34,9 +35,9 @@ class WorkspaceService:
         return workspace
 
     async def list_workspaces(
-        self, user: User, page: int, limit: int
+        self, user: User, pagination: Pagination
     ) -> tuple[list[Workspace], int]:
-        return await self.workspace_repo.list_for_user(user.id, page=page, limit=limit)
+        return await self.workspace_repo.list_for_user(user.id, pagination)
 
     async def update_workspace(
         self, workspace: Workspace, data: WorkspaceUpdate

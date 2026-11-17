@@ -31,7 +31,7 @@ async def list_projects(
     status: ProjectStatus | None = None,
 ) -> Page[ProjectResponse]:
     projects, total = await service.list_projects(
-        access.workspace.id, pagination.page, pagination.limit, status
+        access.workspace.id, pagination, status
     )
     return Page[ProjectResponse](
         items=[ProjectResponse.model_validate(p) for p in projects],

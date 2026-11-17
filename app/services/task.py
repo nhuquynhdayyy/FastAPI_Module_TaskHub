@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
-from app.core.enums import ProjectStatus, TaskPriority, TaskStatus
+from app.core.enums import ProjectStatus
 from app.core.exceptions import ConflictException, NotFoundException
 from app.db.session import DBSession
 from app.dependencies import ProjectAccess, TaskAccess
@@ -9,6 +9,8 @@ from app.models import Project, Task
 from app.repositories.task import TaskRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.task import TaskCreate, TaskUpdate
+from app.core.pagination import Pagination
+from app.schemas.task import TaskFilter
 
 
 def ensure_project_active(project: Project) -> None:
@@ -37,22 +39,9 @@ class TaskService:
             raise NotFoundException(messages.ASSIGNEE_NOT_FOUND)
 
     async def list_tasks(
-        self,
-        project_id: int,
-        page: int,
-        limit: int,
-        statuses: list[TaskStatus] | None = None,
-        priorities: list[TaskPriority] | None = None,
-        assignee_id: int | None = None,
+        self, project_id: int, pagination: Pagination, filters: TaskFilter
     ) -> tuple[list[Task], int]:
-        return await self.repository.list_by_project(
-            project_id,
-            page=page,
-            limit=limit,
-            statuses=statuses,
-            priorities=priorities,
-            assignee_id=assignee_id,
-        )
+        return await self.repository.list_by_project(project_id, pagination, filters)
 
     async def create_task(self, access: ProjectAccess, data: TaskCreate) -> Task:
         ensure_project_active(access.project)

@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.models import Project
 from app.repositories.project import ProjectRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.core.pagination import Pagination
 
 
 class ProjectService:
@@ -27,12 +28,11 @@ class ProjectService:
     async def list_projects(
         self,
         workspace_id: int,
-        page: int,
-        limit: int,
+        pagination: Pagination,
         status: ProjectStatus | None = None,
     ) -> tuple[list[Project], int]:
         return await self.repository.list_by_workspace(
-            workspace_id, page=page, limit=limit, status=status
+            workspace_id, pagination, status=status
         )
 
     async def get_project(self, workspace_id: int, project_id: int) -> Project:

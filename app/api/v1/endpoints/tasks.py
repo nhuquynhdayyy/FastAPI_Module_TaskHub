@@ -6,7 +6,7 @@ from app.api.v1.params import PaginationDep
 from app.core.enums import TaskPriority, TaskStatus
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor, TaskViewer
 from app.schemas.common import Page
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, TaskFilter
 from app.services.task import TaskService, get_task_service
 
 project_router = APIRouter()
@@ -14,6 +14,17 @@ project_router = APIRouter()
 router = APIRouter()
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+
+def get_task_filter(
+    statuses: Annotated[list[TaskStatus] | None, Query(alias="status")] = None,
+    priorities: Annotated[list[TaskPriority] | None, Query(alias="priority")] = None,
+    assignee_id: Annotated[int | None, Query(ge=1)] = None,
+) -> TaskFilter:
+    return TaskFilter(statuses=statuses, priorities=priorities, assignee_id=assignee_id)
+
+
+TaskFilterDep = Annotated[TaskFilter, Depends(get_task_filter)]
 
 
 @project_router.post(
@@ -31,18 +42,9 @@ async def list_tasks(
     access: ProjectViewer,
     service: TaskServiceDep,
     pagination: PaginationDep,
-    statuses: Annotated[list[TaskStatus] | None, Query(alias="status")] = None,
-    priorities: Annotated[list[TaskPriority] | None, Query(alias="priority")] = None,
-    assignee_id: Annotated[int | None, Query(ge=1)] = None,
+    filters: TaskFilterDep,
 ) -> Page[TaskResponse]:
-    tasks, total = await service.list_tasks(
-        access.project.id,
-        page=pagination.page,
-        limit=pagination.limit,
-        statuses=statuses,
-        priorities=priorities,
-        assignee_id=assignee_id,
-    )
+    tasks, total = await service.list_tasks(access.project.id, pagination, filters)
     return Page[TaskResponse](
         items=[TaskResponse.model_validate(t) for t in tasks],
         total=total,

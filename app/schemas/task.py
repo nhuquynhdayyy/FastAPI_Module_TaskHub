@@ -10,6 +10,7 @@ from app.core.constants import (
 from app.core.enums import TaskPriority, TaskStatus
 from app.schemas.base import AppBaseModel, UpdateModel
 from app.schemas.label import LabelResponse
+from dataclasses import dataclass
 
 
 class TaskCreate(AppBaseModel):
@@ -48,3 +49,10 @@ class TaskResponse(AppBaseModel):
     created_by: int
     created_at: datetime
     labels: list[LabelResponse]
+
+
+@dataclass(frozen=True)
+class TaskFilter:
+    statuses: list[TaskStatus] | None = None
+    priorities: list[TaskPriority] | None = None
+    assignee_id: int | None = None

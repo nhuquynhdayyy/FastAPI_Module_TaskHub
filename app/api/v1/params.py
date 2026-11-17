@@ -1,18 +1,8 @@
 from typing import Annotated, Any
 
 from fastapi import Query, Depends
-from dataclasses import dataclass
 from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-
-
-@dataclass(frozen=True)
-class Pagination:
-    page: int
-    limit: int
-
-    @property
-    def offset(self) -> int:
-        return (self.page - 1) * self.limit
+from app.core.pagination import Pagination
 
 
 def get_pagination(
