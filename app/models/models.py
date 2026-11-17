@@ -20,7 +20,12 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from datetime import datetime
-from app.core.constants import TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH
+from app.core.constants import (
+    TITLE_MAX_LENGTH,
+    DESCRIPTION_MAX_LENGTH,
+    LABEL_COLOR_DEFAULT,
+    LABEL_NAME_MAX_LENGTH,
+)
 
 
 class User(Base):
@@ -155,8 +160,8 @@ class Label(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
-    name: Mapped[str] = mapped_column(String(50))
-    color: Mapped[str] = mapped_column(String(10), default="#000000")
+    name: Mapped[str] = mapped_column(String(LABEL_NAME_MAX_LENGTH))
+    color: Mapped[str] = mapped_column(String(7), default=LABEL_COLOR_DEFAULT)
     project: Mapped["Project"] = relationship(back_populates="labels")
     tasks: Mapped[list["Task"]] = relationship(
         secondary=task_labels, back_populates="labels"
