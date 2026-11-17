@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.v1.params import LimitQuery, PageQuery
+from app.api.v1.params import PaginationDep
 from app.core.enums import TaskPriority, TaskStatus
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor, TaskViewer
 from app.schemas.common import Page
@@ -30,20 +30,24 @@ async def create_task(
 async def list_tasks(
     access: ProjectViewer,
     service: TaskServiceDep,
-    page: PageQuery = 1,
-    limit: LimitQuery = 20,
+    pagination: PaginationDep,
     status: TaskStatus | None = None,
     priority: TaskPriority | None = None,
     assignee_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> Page[TaskResponse]:
     tasks, total = await service.list_tasks(
-        access.project.id, page, limit, status, priority, assignee_id
+        access.project.id,
+        pagination.page,
+        pagination.limit,
+        status,
+        priority,
+        assignee_id,
     )
     return Page[TaskResponse](
         items=[TaskResponse.model_validate(t) for t in tasks],
         total=total,
-        page=page,
-        limit=limit,
+        page=pagination.page,
+        limit=pagination.limit,
     )
 
 

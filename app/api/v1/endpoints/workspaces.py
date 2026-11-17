@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
-from app.api.v1.params import LimitQuery, PageQuery
+from app.api.v1.params import PaginationDep
 from app.dependencies import CurrentUser, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
 from app.schemas.workspace import (
@@ -31,15 +31,16 @@ async def create_workspace(
 async def list_my_workspaces(
     user: CurrentUser,
     service: WorkspaceServiceDep,
-    page: PageQuery = 1,
-    limit: LimitQuery = 20,
+    pagination: PaginationDep,
 ) -> Page[WorkspaceResponse]:
-    workspaces, total = await service.list_workspaces(user, page, limit)
+    workspaces, total = await service.list_workspaces(
+        user, pagination.page, pagination.limit
+    )
     return Page[WorkspaceResponse](
         items=[WorkspaceResponse.model_validate(w) for w in workspaces],
         total=total,
-        page=page,
-        limit=limit,
+        page=pagination.page,
+        limit=pagination.limit,
     )
 
 
