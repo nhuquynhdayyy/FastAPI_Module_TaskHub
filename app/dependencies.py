@@ -44,6 +44,8 @@ async def get_current_user(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+
 
 @dataclass
 class WorkspaceAccess:
@@ -98,24 +100,17 @@ class ProjectAccess:
     role: WorkspaceRole
 
 
-def require_project_role(minimum: WorkspaceRole):
+def require_project_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
     async def dependency(
         project_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
-        session: Annotated[AsyncSession, Depends(get_db)],
+        session: DBSession,
     ) -> ProjectAccess:
         project = await ProjectRepository(session).get(project_id)
         if project is None:
             raise NotFoundException(messages.PROJECT_NOT_FOUND)
-        access = await resolve_workspace_access(
-            session,
-            project.workspace_id,
-            user,
-            minimum,
-            messages.PROJECT_NOT_FOUND,
-        )
-        return ProjectAccess(
-            project=project, workspace=access.workspace, user=user, role=access.role
+        return await _project_access(
+            session, project, user, minimum, messages.PROJECT_NOT_FOUND
         )
 
     return dependency
@@ -124,38 +119,39 @@ def require_project_role(minimum: WorkspaceRole):
 @dataclass
 class TaskAccess:
     task: Task
-    project: Project
-    workspace: Workspace
-    user: User
-    role: WorkspaceRole
+    parent: ProjectAccess
+
+    @property
+    def project(self) -> Project:
+        return self.parent.project
+
+    @property
+    def workspace(self) -> Workspace:
+        return self.parent.workspace
+
+    @property
+    def user(self) -> User:
+        return self.parent.user
+
+    @property
+    def role(self) -> WorkspaceRole:
+        return self.parent.role
 
 
-def require_task_role(minimum: WorkspaceRole):
+def require_task_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
     async def dependency(
         task_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
-        session: Annotated[AsyncSession, Depends(get_db)],
+        session: DBSession,
     ) -> TaskAccess:
-        task = await TaskRepository(session).get(task_id)
-        if task is None:
+        row = await TaskRepository(session).get_with_project(task_id)
+        if row is None:
             raise NotFoundException(messages.TASK_NOT_FOUND)
-        project = await ProjectRepository(session).get(task.project_id)
-        if project is None:  # không xảy ra nhờ khóa ngoại, phòng hờ
-            raise NotFoundException(messages.TASK_NOT_FOUND)
-        access = await resolve_workspace_access(
-            session,
-            project.workspace_id,
-            user,
-            minimum,
-            messages.TASK_NOT_FOUND,
+        task, project = row
+        parent = await _project_access(
+            session, project, user, minimum, messages.TASK_NOT_FOUND
         )
-        return TaskAccess(
-            task=task,
-            project=project,
-            workspace=access.workspace,
-            user=user,
-            role=access.role,
-        )
+        return TaskAccess(task=task, parent=parent)
 
     return dependency
 
@@ -164,42 +160,54 @@ def require_task_role(minimum: WorkspaceRole):
 class CommentAccess:
     comment: Comment
     task: Task
-    project: Project
-    workspace: Workspace
-    user: User
-    role: WorkspaceRole
+    parent: ProjectAccess
+
+    @property
+    def project(self) -> Project:
+        return self.parent.project
+
+    @property
+    def workspace(self) -> Workspace:
+        return self.parent.workspace
+
+    @property
+    def user(self) -> User:
+        return self.parent.user
+
+    @property
+    def role(self) -> WorkspaceRole:
+        return self.parent.role
 
 
-def require_comment_role(minimum: WorkspaceRole):
+async def _project_access(
+    session: AsyncSession,
+    project: Project,
+    user: User,
+    minimum: WorkspaceRole,
+    not_found_detail: str,
+) -> ProjectAccess:
+    access = await resolve_workspace_access(
+        session, project.workspace_id, user, minimum, not_found_detail
+    )
+    return ProjectAccess(
+        project=project, workspace=access.workspace, user=user, role=access.role
+    )
+
+
+def require_comment_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
     async def dependency(
         comment_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
-        session: Annotated[AsyncSession, Depends(get_db)],
+        session: DBSession,
     ) -> CommentAccess:
-        comment = await CommentRepository(session).get(comment_id)
-        if comment is None:
+        row = await CommentRepository(session).get_with_task_and_project(comment_id)
+        if row is None:
             raise NotFoundException(messages.COMMENT_NOT_FOUND)
-        task = await TaskRepository(session).get(comment.task_id)
-        if task is None:  # không xảy ra nhờ khóa ngoại, phòng hờ
-            raise NotFoundException(messages.COMMENT_NOT_FOUND)
-        project = await ProjectRepository(session).get(task.project_id)
-        if project is None:
-            raise NotFoundException(messages.COMMENT_NOT_FOUND)
-        access = await resolve_workspace_access(
-            session,
-            project.workspace_id,
-            user,
-            minimum,
-            messages.COMMENT_NOT_FOUND,
+        comment, task, project = row
+        parent = await _project_access(
+            session, project, user, minimum, messages.COMMENT_NOT_FOUND
         )
-        return CommentAccess(
-            comment=comment,
-            task=task,
-            project=project,
-            workspace=access.workspace,
-            user=user,
-            role=access.role,
-        )
+        return CommentAccess(comment=comment, task=task, parent=parent)
 
     return dependency
 
