@@ -9,7 +9,7 @@ from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.models import User, Workspace, WorkspaceMember
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
@@ -87,7 +87,7 @@ class WorkspaceService:
 
 
 def get_workspace_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> WorkspaceService:
     return WorkspaceService(
         session, WorkspaceRepository(session), UserRepository(session)

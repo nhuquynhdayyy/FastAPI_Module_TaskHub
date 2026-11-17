@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import messages
 from app.core.enums import ProjectStatus
 from app.core.exceptions import NotFoundException
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.models import Project
 from app.repositories.project import ProjectRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
@@ -69,6 +69,6 @@ class ProjectService:
 
 
 def get_project_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> ProjectService:
     return ProjectService(session, ProjectRepository(session))

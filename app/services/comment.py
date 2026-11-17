@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
 from app.core.exceptions import ForbiddenException
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.dependencies import CommentAccess, TaskAccess
 from app.models import Comment
 from app.repositories.comment import CommentRepository
@@ -39,6 +39,6 @@ class CommentService:
 
 
 def get_comment_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> CommentService:
     return CommentService(session, CommentRepository(session))
