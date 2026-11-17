@@ -114,10 +114,12 @@ task_labels = Table(
 
 class Task(Base):
     __tablename__ = "tasks"
-    __table_args__ = (Index("ix_tasks_project_id_status", "project_id", "status"),)
+    __table_args__ = (
+        Index("ix_tasks_project_id_created_at_id", "project_id", "created_at", "id"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+        ForeignKey("projects.id", ondelete="CASCADE")
     )
     assignee_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), default=None, index=True
