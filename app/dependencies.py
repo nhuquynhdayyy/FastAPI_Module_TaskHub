@@ -223,6 +223,5 @@ ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(E))]
 
 TaskViewer = Annotated[TaskAccess, Depends(require_task_role(V))]
 TaskEditor = Annotated[TaskAccess, Depends(require_task_role(E))]
-TaskOwner = Annotated[TaskAccess, Depends(require_task_role(O))]
 
 CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(V))]
