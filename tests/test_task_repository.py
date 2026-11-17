@@ -49,7 +49,7 @@ async def test_list_only_returns_tasks_of_the_project(ctx):
 
 async def test_filter_by_status(ctx):
     items, total = await ctx["tasks"].list_by_project(
-        ctx["p1"].id, page=1, limit=10, status=TaskStatus.TODO
+        ctx["p1"].id, page=1, limit=10, statuses=[TaskStatus.TODO]
     )
     assert total == 2
     assert {t.title for t in items} == {"Task A", "Task C"}
@@ -60,7 +60,7 @@ async def test_filter_by_priority_and_assignee(ctx):
         ctx["p1"].id,
         page=1,
         limit=10,
-        priority=TaskPriority.HIGH,
+        priorities=[TaskPriority.HIGH],
         assignee_id=ctx["other"].id,
     )
     assert total == 1

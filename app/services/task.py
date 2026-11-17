@@ -41,16 +41,16 @@ class TaskService:
         project_id: int,
         page: int,
         limit: int,
-        status: TaskStatus | None = None,
-        priority: TaskPriority | None = None,
+        statuses: list[TaskStatus] | None = None,
+        priorities: list[TaskPriority] | None = None,
         assignee_id: int | None = None,
     ) -> tuple[list[Task], int]:
         return await self.repository.list_by_project(
             project_id,
             page=page,
             limit=limit,
-            status=status,
-            priority=priority,
+            statuses=statuses,
+            priorities=priorities,
             assignee_id=assignee_id,
         )
 

@@ -16,15 +16,15 @@ class TaskRepository(BaseRepository[Task]):
         *,
         page: int,
         limit: int,
-        status: TaskStatus | None = None,
-        priority: TaskPriority | None = None,
+        statuses: list[TaskStatus] | None = None,
+        priorities: list[TaskPriority] | None = None,
         assignee_id: int | None = None,
     ) -> tuple[list[Task], int]:
         stmt = select(Task).where(Task.project_id == project_id)
-        if status is not None:
-            stmt = stmt.where(Task.status == status)
-        if priority is not None:
-            stmt = stmt.where(Task.priority == priority)
+        if statuses:
+            stmt = stmt.where(Task.status.in_(statuses))
+        if priorities:
+            stmt = stmt.where(Task.priority.in_(priorities))
         if assignee_id is not None:
             stmt = stmt.where(Task.assignee_id == assignee_id)
         stmt = stmt.order_by(Task.created_at.desc(), Task.id.desc())

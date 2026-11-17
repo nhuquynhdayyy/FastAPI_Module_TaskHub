@@ -31,17 +31,17 @@ async def list_tasks(
     access: ProjectViewer,
     service: TaskServiceDep,
     pagination: PaginationDep,
-    status: TaskStatus | None = None,
-    priority: TaskPriority | None = None,
+    statuses: Annotated[list[TaskStatus] | None, Query(alias="status")] = None,
+    priorities: Annotated[list[TaskPriority] | None, Query(alias="priority")] = None,
     assignee_id: Annotated[int | None, Query(ge=1)] = None,
 ) -> Page[TaskResponse]:
     tasks, total = await service.list_tasks(
         access.project.id,
-        pagination.page,
-        pagination.limit,
-        status,
-        priority,
-        assignee_id,
+        page=pagination.page,
+        limit=pagination.limit,
+        statuses=statuses,
+        priorities=priorities,
+        assignee_id=assignee_id,
     )
     return Page[TaskResponse](
         items=[TaskResponse.model_validate(t) for t in tasks],
