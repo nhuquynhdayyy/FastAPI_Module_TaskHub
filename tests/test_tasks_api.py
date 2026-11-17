@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 API = "/api/v1"
 
 
@@ -81,6 +83,22 @@ async def test_assignee_must_be_workspace_member(world):
         headers=world["editor"],
     )
     assert resp.status_code == 400
+
+
+async def test_create_task_rejects_past_due_date(world):
+    past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    resp = await world["client"].post(
+        world["url"],
+        json={"title": "Task 1", "due_date": past},
+        headers=world["editor"],
+    )
+    assert resp.status_code == 422
+
+
+async def test_create_task_accepts_future_due_date(world):
+    future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+    task = await make_task(world, due_date=future)
+    assert task["due_date"] is not None
 
 
 async def test_archived_project_blocks_create_and_update(world):

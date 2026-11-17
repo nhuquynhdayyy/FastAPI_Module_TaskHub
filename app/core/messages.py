@@ -35,3 +35,4 @@ COMMENT_NOT_FOUND = "Không tìm thấy bình luận"
 COMMENT_DELETE_FORBIDDEN = (
     "Chỉ tác giả hoặc chủ sở hữu workspace mới được xóa bình luận"
 )
+DUE_DATE_IN_PAST = "Hạn hoàn thành không được ở trong quá khứ"

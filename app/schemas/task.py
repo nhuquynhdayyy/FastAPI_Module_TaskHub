@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
+from app.core import messages
 from app.core.constants import (
     DESCRIPTION_MAX_LENGTH,
     TITLE_MAX_LENGTH,
@@ -20,6 +21,16 @@ class TaskCreate(AppBaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     due_date: datetime | None = None
     assignee_id: int | None = Field(default=None, ge=1)
+
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_in_past(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return value
+        aware = value if value.tzinfo else value.replace(tzinfo=UTC)
+        if aware < datetime.now(UTC):
+            raise ValueError(messages.DUE_DATE_IN_PAST)
+        return value
 
 
 class TaskUpdate(UpdateModel):
