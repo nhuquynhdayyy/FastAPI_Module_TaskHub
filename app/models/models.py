@@ -25,6 +25,7 @@ from app.core.constants import (
     DESCRIPTION_MAX_LENGTH,
     LABEL_COLOR_DEFAULT,
     LABEL_NAME_MAX_LENGTH,
+    COMMENT_MAX_LENGTH,
 )
 
 
@@ -177,7 +178,7 @@ class Comment(Base):
     author_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    content: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(String(COMMENT_MAX_LENGTH))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
