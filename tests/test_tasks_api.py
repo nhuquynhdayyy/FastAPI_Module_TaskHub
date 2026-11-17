@@ -80,7 +80,7 @@ async def test_assignee_must_be_workspace_member(world):
         json={"title": "Task 1", "assignee_id": me["id"]},
         headers=world["editor"],
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 400
 
 
 async def test_archived_project_blocks_create_and_update(world):

@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
 from app.core.enums import ProjectStatus
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import ConflictException, BadRequestException
 from app.db.session import DBSession
 from app.dependencies import ProjectAccess, TaskAccess
 from app.models import Project, Task
@@ -36,7 +36,7 @@ class TaskService:
             return
         member = await self.workspace_repository.get_member(workspace_id, assignee_id)
         if member is None:
-            raise NotFoundException(messages.ASSIGNEE_NOT_FOUND)
+            raise BadRequestException(messages.ASSIGNEE_NOT_IN_WORKSPACE)
 
     async def list_tasks(
         self, project_id: int, pagination: Pagination, filters: TaskFilter
