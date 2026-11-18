@@ -35,4 +35,8 @@ COMMENT_NOT_FOUND = "Không tìm thấy bình luận"
 COMMENT_DELETE_FORBIDDEN = (
     "Chỉ tác giả hoặc chủ sở hữu workspace mới được xóa bình luận"
 )
+TASK_ASSIGNED_SUBJECT = "Bạn được giao việc: {title}"
+TASK_ASSIGNED_BODY = (
+    'Bạn vừa được giao công việc "{title}" trong project #{project_id}.'
+)
 DUE_DATE_IN_PAST = "Hạn hoàn thành không được ở trong quá khứ"
