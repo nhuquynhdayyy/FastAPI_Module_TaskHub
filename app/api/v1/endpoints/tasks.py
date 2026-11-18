@@ -3,10 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.params import PaginationDep
+from app.api.v1.responses import FORBIDDEN, NOT_FOUND
 from app.core.enums import TaskPriority, TaskStatus
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor, TaskViewer
 from app.schemas.common import Page
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, TaskFilter
+from app.schemas.task import TaskCreate, TaskFilter, TaskResponse, TaskUpdate
 from app.services.task import TaskService, get_task_service
 
 project_router = APIRouter()
@@ -28,7 +29,18 @@ TaskFilterDep = Annotated[TaskFilter, Depends(get_task_filter)]
 
 
 @project_router.post(
-    "", response_model=TaskResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=TaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Tạo task trong project",
+    responses={
+        **NOT_FOUND,
+        **FORBIDDEN,
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Assignee không phải thành viên workspace"
+        },
+        status.HTTP_409_CONFLICT: {"description": "Project đã ARCHIVED"},
+    },
 )
 async def create_task(
     data: TaskCreate, access: ProjectEditor, service: TaskServiceDep
@@ -37,7 +49,12 @@ async def create_task(
     return TaskResponse.model_validate(task)
 
 
-@project_router.get("", response_model=Page[TaskResponse])
+@project_router.get(
+    "",
+    response_model=Page[TaskResponse],
+    summary="Danh sách task (lọc, phân trang)",
+    responses={**NOT_FOUND},
+)
 async def list_tasks(
     access: ProjectViewer,
     service: TaskServiceDep,
@@ -53,12 +70,29 @@ async def list_tasks(
     )
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get(
+    "/{task_id}",
+    response_model=TaskResponse,
+    summary="Chi tiết task",
+    responses={**NOT_FOUND},
+)
 async def get_task(access: TaskViewer) -> TaskResponse:
     return TaskResponse.model_validate(access.task)
 
 
-@router.patch("/{task_id}", response_model=TaskResponse)
+@router.patch(
+    "/{task_id}",
+    response_model=TaskResponse,
+    summary="Sửa task",
+    responses={
+        **NOT_FOUND,
+        **FORBIDDEN,
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Assignee không phải thành viên workspace"
+        },
+        status.HTTP_409_CONFLICT: {"description": "Project đã ARCHIVED"},
+    },
+)
 async def update_task(
     data: TaskUpdate, access: TaskEditor, service: TaskServiceDep
 ) -> TaskResponse:
@@ -66,6 +100,11 @@ async def update_task(
     return TaskResponse.model_validate(task)
 
 
-@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Xóa task (kèm bình luận)",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def delete_task(access: TaskEditor, service: TaskServiceDep) -> None:
     await service.delete_task(access.task)

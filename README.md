@@ -38,8 +38,7 @@ docker run --name taskhub-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskhu
 
 ### 3. Cấu hình biến môi trường
 
-Sao chép `.env.example` thành `.env` rồi chỉnh giá trị
-
+Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. `SECRET_KEY` cần tối thiểu 32 ký tự.
 
 ### 4. Tạo bảng (migration)
 
@@ -47,7 +46,15 @@ Sao chép `.env.example` thành `.env` rồi chỉnh giá trị
 alembic upgrade head
 ```
 
-### 5. Chạy ứng dụng
+### 5. Tạo dữ liệu mẫu (user, workspace, project)
+
+```bash
+python -m scripts.seed
+```
+
+Ghi hai số in ra (`DEFAULT_USER_ID`, `DEFAULT_PROJECT_ID`) vào file `.env`.
+
+### 6. Chạy ứng dụng
 
 ```bash
 uvicorn app.main:app --reload
@@ -55,7 +62,6 @@ uvicorn app.main:app --reload
 
 - Swagger UI: http://127.0.0.1:8000/docs
 - Health check: http://127.0.0.1:8000/health
-
 
 ## Authentication
 
@@ -114,15 +120,18 @@ Quy tắc trả lỗi:
 | Không phải thành viên workspace | 404 | Đúng thông báo của tài nguyên được hỏi (`Project không tồn tại`, `Task không tồn tại`, `Không tìm thấy bình luận`) |
 | Tài nguyên không tồn tại | 404 | Giống hệt trường hợp ở dòng trên, nên không lộ ID có thật |
 | Thành viên thiếu quyền | 403 | |
+| Assignee không phải thành viên workspace | 400 | Dữ liệu body sai, không phải tài nguyên không tồn tại |
 | Project ARCHIVED, tạo hoặc sửa task | 409 | |
+| Tên label đã tồn tại trong project, hoặc gán trùng label cho task | 409 | |
 | Dữ liệu sai (status không hợp lệ, `limit=0`, bình luận rỗng) | 422 | |
 
 Các quy tắc nghiệp vụ:
 
-- Assignee phải là thành viên workspace của project.
+- Assignee phải là thành viên workspace của project, nếu không trả 400.
 - Label chỉ được gán cho task cùng project.
 - Project ARCHIVED không cho tạo, sửa task. Bình luận và xóa vẫn được.
 - Xóa task kèm xóa các bình luận của task.
+- Xóa bình luận: chỉ tác giả hoặc OWNER.
 
 ### Test trên Swagger
 
@@ -157,7 +166,7 @@ Các quy tắc nghiệp vụ:
 | POST | `/api/v1/workspaces/{workspace_id}/projects/{project_id}/archive` | Lưu trữ project | EDITOR+ |
 | DELETE | `/api/v1/workspaces/{workspace_id}/projects/{project_id}` | Xóa project | OWNER |
 | POST | `/api/v1/projects/{project_id}/tasks` | Tạo task (`created_by` là user đăng nhập) | EDITOR+ |
-| GET | `/api/v1/projects/{project_id}/tasks` | Danh sách task (lọc `status`, `priority`, `assignee_id`; phân trang `page`, `limit`) | VIEWER+ |
+| GET | `/api/v1/projects/{project_id}/tasks` | Danh sách task (lọc `status`, `priority` nhận nhiều giá trị, `assignee_id`; phân trang `page`, `limit`) | VIEWER+ |
 | GET | `/api/v1/tasks/{task_id}` | Chi tiết task | VIEWER+ |
 | PATCH | `/api/v1/tasks/{task_id}` | Sửa task, giao việc, đổi status, priority, due_date | EDITOR+ |
 | DELETE | `/api/v1/tasks/{task_id}` | Xóa task (kèm bình luận) | EDITOR+ |
@@ -174,8 +183,12 @@ Các quy tắc nghiệp vụ:
 ### Ví dụ lọc và phân trang
 
 ```
-GET /api/v1/projects/1/tasks?status=IN_PROGRESS&priority=HIGH&assignee_id=3&page=1&limit=10
+GET /api/v1/projects/1/tasks?status=TODO&status=IN_PROGRESS&priority=HIGH&assignee_id=3&page=1&limit=10
 ```
+
+Truyền lặp tham số để lọc nhiều giá trị: `status=TODO&status=IN_PROGRESS` nghĩa là TODO hoặc IN_PROGRESS. `priority` làm tương tự. `assignee_id` chỉ nhận một giá trị.
+
+Phân trang: `page` bắt đầu từ 1, `limit` có giá trị mặc định và tối đa định nghĩa trong `app/core/constants.py`. Danh sách task sắp xếp theo `created_at` giảm dần, rồi `id` giảm dần.
 
 ## Test
 
@@ -186,11 +199,21 @@ pytest -q
 | File | Nội dung |
 |---|---|
 | `tests/test_tasks_api.py` | Task: quyền, lọc, phân trang, project ARCHIVED, assignee |
-| `tests/test_labels_api.py` | Label: quyền, gán label khác project |
+| `tests/test_labels_api.py` | Label: quyền, gán label khác project, trùng tên |
 | `tests/test_comments_api.py` | Comment: thêm, xóa theo tác giả hoặc OWNER, 404 không lộ tài nguyên |
+| `tests/test_task_repository.py` | Repository: lọc, phân trang |
+| `tests/test_services.py` | Service: danh sách project theo status |
 
 ## Migration
 
 ```bash
 alembic upgrade head
 ```
+
+Tạo migration mới sau khi đổi model:
+
+```bash
+alembic revision --autogenerate -m "mô tả ngắn"
+```
+
+Luôn mở file sinh ra để kiểm tra trước khi chạy `upgrade`.
