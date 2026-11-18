@@ -61,13 +61,7 @@ async def list_tasks(
     pagination: PaginationDep,
     filters: TaskFilterDep,
 ) -> Page[TaskResponse]:
-    tasks, total = await service.list_tasks(access.project.id, pagination, filters)
-    return Page[TaskResponse](
-        items=[TaskResponse.model_validate(t) for t in tasks],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
-    )
+    return await service.list_tasks(access.project.id, pagination, filters)
 
 
 @router.get(
