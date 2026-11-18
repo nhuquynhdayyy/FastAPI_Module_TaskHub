@@ -13,6 +13,7 @@ from app.schemas.project import ProjectCreate
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
 from app.services.project import ProjectService
 from app.services.workspace import WorkspaceService
+from app.core.pagination import Pagination
 
 
 @pytest.fixture
@@ -107,6 +108,10 @@ async def test_list_projects_filters_by_status(ctx):
     await pj.create_project(ws_id, ProjectCreate(name="Project 2"))
     await pj.archive_project(ws_id, p1.id)
 
-    _, active = await pj.list_projects(ws_id, 1, 10, ProjectStatus.ACTIVE)
-    _, archived = await pj.list_projects(ws_id, 1, 10, ProjectStatus.ARCHIVED)
+    _, active = await pj.list_projects(
+        ws_id, Pagination(page=1, limit=10), ProjectStatus.ACTIVE
+    )
+    _, archived = await pj.list_projects(
+        ws_id, Pagination(page=1, limit=10), ProjectStatus.ARCHIVED
+    )
     assert (active, archived) == (1, 1)

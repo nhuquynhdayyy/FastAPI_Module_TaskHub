@@ -1,22 +1,21 @@
 import os
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key-test-secret-key-0123456789")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-
+import pytest
 import pytest_asyncio
+from fakeredis import FakeAsyncRedis, FakeServer
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-import app.models
-from app.models.base import Base
-from app.db.session import get_db
-from app.main import app
+# Phải đặt biến môi trường trước khi import app (Settings đọc lúc import).
+os.environ.setdefault("SECRET_KEY", "test-secret-key-test-secret-key-0123456789")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
-import pytest
-from fakeredis import FakeAsyncRedis, FakeServer
-
-from app.core.redis import get_redis
+import app.models  # noqa: E402, F401
+from app.core.redis import get_redis  # noqa: E402
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",

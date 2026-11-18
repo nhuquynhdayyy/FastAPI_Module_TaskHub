@@ -15,7 +15,7 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.models import User
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.user import UserRepository
@@ -102,7 +102,7 @@ class AuthService:
 
 
 def get_auth_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> AuthService:
     return AuthService(
         session, UserRepository(session), RefreshTokenRepository(session)

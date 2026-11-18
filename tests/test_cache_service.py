@@ -2,6 +2,7 @@ import pytest
 from fakeredis import FakeAsyncRedis, FakeServer
 from redis.exceptions import ConnectionError as RedisConnectionError
 
+from app.core.enums import TaskStatus
 from app.services.cache_service import CacheService
 
 
@@ -45,15 +46,38 @@ async def test_invalidate_bumps_version_and_changes_key(cache: CacheService):
     v1 = await cache.get_version(1)
     assert v1 == "0"
     key_before = cache.tasks_key(
-        1, v1, status=None, priority=None, assignee=None, page=1, limit=20
+        1, v1, statuses=None, priorities=None, assignee=None, page=1, limit=20
     )
     await cache.invalidate_project(1)
     v2 = await cache.get_version(1)
     assert v2 == "1"
     key_after = cache.tasks_key(
-        1, v2, status=None, priority=None, assignee=None, page=1, limit=20
+        1, v2, statuses=None, priorities=None, assignee=None, page=1, limit=20
     )
     assert key_before != key_after
+
+
+def test_tasks_key_ignores_order_of_multi_value_filters(cache: CacheService):
+    a = cache.tasks_key(
+        1,
+        "0",
+        statuses=[TaskStatus.TODO, TaskStatus.DONE],
+        priorities=None,
+        assignee=None,
+        page=1,
+        limit=20,
+    )
+    b = cache.tasks_key(
+        1,
+        "0",
+        statuses=[TaskStatus.DONE, TaskStatus.TODO],
+        priorities=None,
+        assignee=None,
+        page=1,
+        limit=20,
+    )
+    assert a == b
+    assert "DONE,TODO" in a
 
 
 @pytest.mark.asyncio
@@ -69,10 +93,3 @@ async def test_fail_open_when_redis_down():
     assert await cache.get_json("k") is None
     await cache.set_json("k", {"a": 1})
     await cache.invalidate_project(1)
-
-
-@pytest.fixture
-def cache() -> CacheService:
-    return CacheService(
-        FakeAsyncRedis(server=FakeServer(), decode_responses=True), ttl=60
-    )

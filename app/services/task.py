@@ -1,17 +1,20 @@
+from typing import Annotated
+
+from fastapi import BackgroundTasks, Depends
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
-from app.core.enums import ProjectStatus, TaskPriority, TaskStatus
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.enums import ProjectStatus
+from app.core.exceptions import BadRequestException, ConflictException
+from app.core.pagination import Pagination
 from app.db.session import DBSession
 from app.dependencies import ProjectAccess, TaskAccess
 from app.models import Project, Task, User
 from app.repositories.task import TaskRepository
 from app.repositories.workspace import WorkspaceRepository
-from app.schemas.task import TaskCreate, TaskUpdate
-
-from fastapi import Depends, BackgroundTasks
-
+from app.schemas.common import Page
+from app.schemas.task import TaskCreate, TaskFilter, TaskResponse, TaskUpdate
 from app.services.cache_service import CacheService, get_cache_service
 from app.services.email import send_task_assigned_email
 
@@ -43,7 +46,7 @@ class TaskService:
             return
         member = await self.workspace_repository.get_member(workspace_id, assignee_id)
         if member is None:
-            raise NotFoundException(messages.ASSIGNEE_NOT_FOUND)
+            raise BadRequestException(messages.ASSIGNEE_NOT_IN_WORKSPACE)
 
     async def _notify_assigned(
         self,
@@ -62,22 +65,37 @@ class TaskService:
         )
 
     async def list_tasks(
-        self,
-        project_id: int,
-        page: int,
-        limit: int,
-        status: TaskStatus | None = None,
-        priority: TaskPriority | None = None,
-        assignee_id: int | None = None,
-    ) -> tuple[list[Task], int]:
-        return await self.repository.list_by_project(
+        self, project_id: int, pagination: Pagination, filters: TaskFilter
+    ) -> Page[TaskResponse]:
+        version = await self.cache.get_version(project_id)
+        key = self.cache.tasks_key(
             project_id,
-            page=page,
-            limit=limit,
-            status=status,
-            priority=priority,
-            assignee_id=assignee_id,
+            version,
+            statuses=filters.statuses,
+            priorities=filters.priorities,
+            assignee=filters.assignee_id,
+            page=pagination.page,
+            limit=pagination.limit,
         )
+
+        cached = await self.cache.get_json(key)
+        if cached is not None:
+            try:
+                return Page[TaskResponse].model_validate(cached)
+            except ValidationError:
+                pass
+
+        tasks, total = await self.repository.list_by_project(
+            project_id, pagination, filters
+        )
+        result = Page[TaskResponse](
+            items=[TaskResponse.model_validate(t) for t in tasks],
+            total=total,
+            page=pagination.page,
+            limit=pagination.limit,
+        )
+        await self.cache.set_json(key, result.model_dump(mode="json"))
+        return result
 
     async def create_task(self, access: ProjectAccess, data: TaskCreate) -> Task:
         ensure_project_active(access.project)
@@ -124,7 +142,7 @@ class TaskService:
 def get_task_service(
     session: DBSession,
     background_tasks: BackgroundTasks,
-    cache: CacheService = Depends(get_cache_service),
+    cache: Annotated[CacheService, Depends(get_cache_service)],
 ) -> TaskService:
     return TaskService(
         session,

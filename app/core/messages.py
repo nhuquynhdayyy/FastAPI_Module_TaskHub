@@ -17,7 +17,7 @@ MEMBER_NOT_FOUND = "Không tìm thấy thành viên"
 ALREADY_MEMBER = "Người dùng đã là thành viên"
 CANNOT_REMOVE_OWNER = "Không thể xóa chủ sở hữu workspace"
 INSUFFICIENT_PERMISSION = "Bạn không có quyền thực hiện thao tác này"
-ASSIGNEE_NOT_FOUND = "Không tìm thấy người được giao"
+ASSIGNEE_NOT_IN_WORKSPACE = "Người được giao không thuộc workspace"
 FIELD_MUST_NOT_BE_NULL = "Trường {field} không được để trống"
 FIELD_CANNOT_BE_NULL = "Trường này không được để trống"
 CANNOT_INVITE_AS_OWNER = "Không thể mời với role OWNER"
@@ -39,3 +39,4 @@ TASK_ASSIGNED_SUBJECT = "Bạn được giao việc: {title}"
 TASK_ASSIGNED_BODY = (
     'Bạn vừa được giao công việc "{title}" trong project #{project_id}.'
 )
+DUE_DATE_IN_PAST = "Hạn hoàn thành không được ở trong quá khứ"

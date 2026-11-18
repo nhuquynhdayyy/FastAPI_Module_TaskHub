@@ -1,7 +1,7 @@
 import json
 import logging
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Depends
 from redis.asyncio import Redis
@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 def _part(value: Any) -> str:
     if value is None:
         return "-"
+    if isinstance(value, (list, tuple, set)):
+        if not value:
+            return "-"
+        return ",".join(sorted(_part(v) for v in value))
     if isinstance(value, Enum):
         return str(value.value)
     return str(value)
@@ -35,14 +39,14 @@ class CacheService:
         project_id: int,
         version: str,
         *,
-        status: Any,
-        priority: Any,
+        statuses: Any,
+        priorities: Any,
         assignee: Any,
         page: int,
         limit: int,
     ) -> str:
         return (
-            f"tasks:{project_id}:v{version}:{_part(status)}:{_part(priority)}"
+            f"tasks:{project_id}:v{version}:{_part(statuses)}:{_part(priorities)}"
             f":{_part(assignee)}:{_part(page)}:{_part(limit)}"
         )
 
@@ -79,5 +83,7 @@ class CacheService:
             logger.warning("Redis lỗi khi ghi khóa %s", key, exc_info=True)
 
 
-def get_cache_service(redis: Redis = Depends(get_redis)) -> CacheService:
+def get_cache_service(
+    redis: Annotated[Redis, Depends(get_redis)],
+) -> CacheService:
     return CacheService(redis)

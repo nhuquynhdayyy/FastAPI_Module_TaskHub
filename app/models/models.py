@@ -20,7 +20,13 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from datetime import datetime
-from app.core.constants import TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH
+from app.core.constants import (
+    TITLE_MAX_LENGTH,
+    DESCRIPTION_MAX_LENGTH,
+    LABEL_COLOR_DEFAULT,
+    LABEL_NAME_MAX_LENGTH,
+    COMMENT_MAX_LENGTH,
+)
 
 
 class User(Base):
@@ -108,10 +114,12 @@ task_labels = Table(
 
 class Task(Base):
     __tablename__ = "tasks"
-    __table_args__ = (Index("ix_tasks_project_id_status", "project_id", "status"),)
+    __table_args__ = (
+        Index("ix_tasks_project_id_created_at_id", "project_id", "created_at", "id"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+        ForeignKey("projects.id", ondelete="CASCADE")
     )
     assignee_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), default=None, index=True
@@ -155,8 +163,8 @@ class Label(Base):
     project_id: Mapped[int] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
-    name: Mapped[str] = mapped_column(String(50))
-    color: Mapped[str] = mapped_column(String(10), default="#000000")
+    name: Mapped[str] = mapped_column(String(LABEL_NAME_MAX_LENGTH))
+    color: Mapped[str] = mapped_column(String(7), default=LABEL_COLOR_DEFAULT)
     project: Mapped["Project"] = relationship(back_populates="labels")
     tasks: Mapped[list["Task"]] = relationship(
         secondary=task_labels, back_populates="labels"
@@ -172,7 +180,7 @@ class Comment(Base):
     author_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    content: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(String(COMMENT_MAX_LENGTH))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

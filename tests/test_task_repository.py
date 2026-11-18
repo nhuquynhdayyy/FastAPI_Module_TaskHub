@@ -5,6 +5,8 @@ from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.core.pagination import Pagination
+from app.schemas.task import TaskFilter
 
 
 @pytest.fixture
@@ -42,14 +44,18 @@ async def ctx(session):
 
 
 async def test_list_only_returns_tasks_of_the_project(ctx):
-    items, total = await ctx["tasks"].list_by_project(ctx["p1"].id, page=1, limit=10)
+    items, total = await ctx["tasks"].list_by_project(
+        ctx["p1"].id, Pagination(page=1, limit=10), TaskFilter()
+    )
     assert total == 3
     assert {t.title for t in items} == {"Task A", "Task B", "Task C"}
 
 
 async def test_filter_by_status(ctx):
     items, total = await ctx["tasks"].list_by_project(
-        ctx["p1"].id, page=1, limit=10, status=TaskStatus.TODO
+        ctx["p1"].id,
+        Pagination(page=1, limit=10),
+        TaskFilter(statuses=[TaskStatus.TODO]),
     )
     assert total == 2
     assert {t.title for t in items} == {"Task A", "Task C"}
@@ -58,18 +64,20 @@ async def test_filter_by_status(ctx):
 async def test_filter_by_priority_and_assignee(ctx):
     items, total = await ctx["tasks"].list_by_project(
         ctx["p1"].id,
-        page=1,
-        limit=10,
-        priority=TaskPriority.HIGH,
-        assignee_id=ctx["other"].id,
+        Pagination(page=1, limit=10),
+        TaskFilter(priorities=[TaskPriority.HIGH], assignee_id=ctx["other"].id),
     )
     assert total == 1
     assert items[0].title == "Task B"
 
 
 async def test_pagination_total_is_independent_of_page(ctx):
-    page1, total1 = await ctx["tasks"].list_by_project(ctx["p1"].id, page=1, limit=2)
-    page2, total2 = await ctx["tasks"].list_by_project(ctx["p1"].id, page=2, limit=2)
+    page1, total1 = await ctx["tasks"].list_by_project(
+        ctx["p1"].id, Pagination(page=1, limit=2), TaskFilter()
+    )
+    page2, total2 = await ctx["tasks"].list_by_project(
+        ctx["p1"].id, Pagination(page=2, limit=2), TaskFilter()
+    )
     assert (len(page1), len(page2)) == (2, 1)
     assert total1 == total2 == 3
     assert not {t.id for t in page1} & {t.id for t in page2}

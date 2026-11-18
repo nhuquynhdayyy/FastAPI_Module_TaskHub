@@ -1,9 +1,9 @@
 import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.redis import get_redis
 from app.main import app
-from app.services.task import TaskService
-from redis.exceptions import ConnectionError as RedisConnectionError
+from app.repositories.task import TaskRepository
 
 API = "/api/v1"
 
@@ -39,15 +39,19 @@ def ver_key(w):
 
 @pytest.fixture
 def list_calls(monkeypatch):
-    """Đếm số lần thật sự query DB để lấy danh sách task."""
+    """Đếm số lần thật sự query DB để lấy danh sách task.
+
+    Cache nằm trong TaskService.list_tasks nên phải theo dõi ở tầng repository:
+    cache trúng thì repository không được gọi.
+    """
     calls = []
-    original = TaskService.list_tasks
+    original = TaskRepository.list_by_project
 
     async def spy(self, *args, **kwargs):
         calls.append(1)
         return await original(self, *args, **kwargs)
 
-    monkeypatch.setattr(TaskService, "list_tasks", spy)
+    monkeypatch.setattr(TaskRepository, "list_by_project", spy)
     return calls
 
 
@@ -83,6 +87,15 @@ async def test_each_filter_has_its_own_entry(world, list_calls, fake_redis):
     keys = await fake_redis.keys(f"tasks:{world['project_id']}:*")
     assert len(keys) == 2
     assert len(list_calls) == 2
+
+
+async def test_filter_order_does_not_create_new_entry(world, list_calls):
+    await make_task(world)
+    r1 = await get_list(world, status=["TODO", "DONE"])
+    r2 = await get_list(world, status=["DONE", "TODO"])
+    assert r1.status_code == r2.status_code == 200
+    assert r1.json() == r2.json()
+    assert len(list_calls) == 1
 
 
 async def test_create_task_invalidates_cache(world):

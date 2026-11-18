@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
 from app.core.exceptions import ConflictException, NotFoundException
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.dependencies import TaskAccess
 from app.models import Label, Task
 from app.repositories.label import LabelRepository
@@ -95,7 +95,7 @@ class LabelService:
 
 
 def get_label_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
     cache: Annotated[CacheService, Depends(get_cache_service)],
 ) -> LabelService:
     return LabelService(session, LabelRepository(session), cache)

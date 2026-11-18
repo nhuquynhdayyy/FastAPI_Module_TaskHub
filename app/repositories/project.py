@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.enums import ProjectStatus
 from app.models import Project
 from app.repositories.base import BaseRepository
+from app.core.pagination import Pagination
 
 
 class ProjectRepository(BaseRepository[Project]):
@@ -23,13 +24,11 @@ class ProjectRepository(BaseRepository[Project]):
     async def list_by_workspace(
         self,
         workspace_id: int,
-        *,
-        page: int = 1,
-        limit: int = 20,
+        pagination: Pagination,
         status: ProjectStatus | None = None,
     ) -> tuple[list[Project], int]:
         stmt = select(Project).where(Project.workspace_id == workspace_id)
         if status is not None:
             stmt = stmt.where(Project.status == status)
         stmt = stmt.order_by(Project.id)
-        return await self.paginate(stmt, page=page, limit=limit)
+        return await self.paginate(stmt, pagination)

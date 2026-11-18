@@ -93,7 +93,7 @@ async def test_invalid_assignee_sends_nothing(world, sent):
     task = await make_task(world)
     outsider_id = await user_id(world, "outsider")
     resp = await patch_task(world, task["id"], assignee_id=outsider_id)
-    assert resp.status_code == 404
+    assert resp.status_code == 400
     assert sent == []
 
 
