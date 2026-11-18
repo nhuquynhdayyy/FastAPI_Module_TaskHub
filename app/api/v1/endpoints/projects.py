@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
-from app.api.v1.params import LimitQuery, PageQuery
+from app.api.v1.params import PaginationDep
 from app.core.enums import ProjectStatus
 from app.dependencies import WorkspaceEditor, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
@@ -27,18 +27,17 @@ async def create_project(
 async def list_projects(
     access: WorkspaceViewer,
     service: ProjectServiceDep,
-    page: PageQuery = 1,
-    limit: LimitQuery = 20,
+    pagination: PaginationDep,
     status: ProjectStatus | None = None,
 ) -> Page[ProjectResponse]:
     projects, total = await service.list_projects(
-        access.workspace.id, page, limit, status
+        access.workspace.id, pagination, status
     )
     return Page[ProjectResponse](
         items=[ProjectResponse.model_validate(p) for p in projects],
         total=total,
-        page=page,
-        limit=limit,
+        page=pagination.page,
+        limit=pagination.limit,
     )
 
 

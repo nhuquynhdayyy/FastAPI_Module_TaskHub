@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import messages
 from app.core.enums import ProjectStatus
 from app.core.exceptions import NotFoundException
-from app.db.session import get_db
+from app.db.session import DBSession
 from app.models import Project
 from app.repositories.project import ProjectRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.core.pagination import Pagination
 
 
 class ProjectService:
@@ -27,12 +28,11 @@ class ProjectService:
     async def list_projects(
         self,
         workspace_id: int,
-        page: int,
-        limit: int,
+        pagination: Pagination,
         status: ProjectStatus | None = None,
     ) -> tuple[list[Project], int]:
         return await self.repository.list_by_workspace(
-            workspace_id, page=page, limit=limit, status=status
+            workspace_id, pagination, status=status
         )
 
     async def get_project(self, workspace_id: int, project_id: int) -> Project:
@@ -69,6 +69,6 @@ class ProjectService:
 
 
 def get_project_service(
-    session: Annotated[AsyncSession, Depends(get_db)],
+    session: DBSession,
 ) -> ProjectService:
     return ProjectService(session, ProjectRepository(session))

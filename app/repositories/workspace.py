@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.enums import WorkspaceRole
 from app.models import Workspace, WorkspaceMember
 from app.repositories.base import BaseRepository
+from app.core.pagination import Pagination
 
 
 class WorkspaceRepository(BaseRepository[Workspace]):
@@ -26,7 +27,7 @@ class WorkspaceRepository(BaseRepository[Workspace]):
         return workspace
 
     async def list_for_user(
-        self, user_id: int, *, page: int = 1, limit: int = 20
+        self, user_id: int, pagination: Pagination
     ) -> tuple[list[Workspace], int]:
         stmt = (
             select(Workspace)
@@ -34,7 +35,7 @@ class WorkspaceRepository(BaseRepository[Workspace]):
             .where(WorkspaceMember.user_id == user_id)
             .order_by(Workspace.id)
         )
-        return await self.paginate(stmt, page=page, limit=limit)
+        return await self.paginate(stmt, pagination)
 
     async def get_member(
         self, workspace_id: int, user_id: int

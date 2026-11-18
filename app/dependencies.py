@@ -16,9 +16,12 @@ from app.core.exceptions import (
 from app.core.permissions import has_at_least
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
-from app.models import User, Workspace
+from app.models import Project, Task, User, Workspace, Comment
+from app.repositories.project import ProjectRepository
+from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
+from app.repositories.comment import CommentRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
@@ -41,6 +44,8 @@ async def get_current_user(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+
 
 @dataclass
 class WorkspaceAccess:
@@ -49,40 +54,174 @@ class WorkspaceAccess:
     role: WorkspaceRole
 
 
+async def resolve_workspace_access(
+    session: AsyncSession,
+    workspace_id: int,
+    user: User,
+    minimum: WorkspaceRole,
+    not_found_detail: str = messages.WORKSPACE_NOT_FOUND,
+) -> WorkspaceAccess:
+    repo = WorkspaceRepository(session)
+
+    workspace = await repo.get(workspace_id)
+    if workspace is None:
+        raise NotFoundException(not_found_detail)
+
+    if user.role == UserRole.ADMIN:
+        role = WorkspaceRole.OWNER
+    else:
+        member = await repo.get_member(workspace_id, user.id)
+        if member is None:
+            raise NotFoundException(not_found_detail)
+        role = member.role
+
+    if not has_at_least(role, minimum):
+        raise ForbiddenException(messages.INSUFFICIENT_PERMISSION)
+
+    return WorkspaceAccess(workspace=workspace, user=user, role=role)
+
+
 def require_workspace_role(minimum: WorkspaceRole):
     async def dependency(
         workspace_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
         session: Annotated[AsyncSession, Depends(get_db)],
     ) -> WorkspaceAccess:
-        repo = WorkspaceRepository(session)
-
-        workspace = await repo.get(workspace_id)
-        if workspace is None:
-            raise NotFoundException(messages.WORKSPACE_NOT_FOUND)
-
-        if user.role == UserRole.ADMIN:
-            role = WorkspaceRole.OWNER
-        else:
-            member = await repo.get_member(workspace_id, user.id)
-            if member is None:
-                raise NotFoundException(messages.WORKSPACE_NOT_FOUND)
-            role = member.role
-
-        if not has_at_least(role, minimum):
-            raise ForbiddenException(messages.INSUFFICIENT_PERMISSION)
-
-        return WorkspaceAccess(workspace=workspace, user=user, role=role)
+        return await resolve_workspace_access(session, workspace_id, user, minimum)
 
     return dependency
 
 
-WorkspaceViewer = Annotated[
-    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.VIEWER))
-]
-WorkspaceEditor = Annotated[
-    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.EDITOR))
-]
-WorkspaceOwner = Annotated[
-    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.OWNER))
-]
+@dataclass
+class ProjectAccess:
+    project: Project
+    workspace: Workspace
+    user: User
+    role: WorkspaceRole
+
+
+def require_project_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+    async def dependency(
+        project_id: Annotated[int, Path(ge=1)],
+        user: CurrentUser,
+        session: DBSession,
+    ) -> ProjectAccess:
+        project = await ProjectRepository(session).get(project_id)
+        if project is None:
+            raise NotFoundException(messages.PROJECT_NOT_FOUND)
+        return await _project_access(
+            session, project, user, minimum, messages.PROJECT_NOT_FOUND
+        )
+
+    return dependency
+
+
+@dataclass
+class TaskAccess:
+    task: Task
+    parent: ProjectAccess
+
+    @property
+    def project(self) -> Project:
+        return self.parent.project
+
+    @property
+    def workspace(self) -> Workspace:
+        return self.parent.workspace
+
+    @property
+    def user(self) -> User:
+        return self.parent.user
+
+    @property
+    def role(self) -> WorkspaceRole:
+        return self.parent.role
+
+
+def require_task_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+    async def dependency(
+        task_id: Annotated[int, Path(ge=1)],
+        user: CurrentUser,
+        session: DBSession,
+    ) -> TaskAccess:
+        row = await TaskRepository(session).get_with_project(task_id)
+        if row is None:
+            raise NotFoundException(messages.TASK_NOT_FOUND)
+        task, project = row
+        parent = await _project_access(
+            session, project, user, minimum, messages.TASK_NOT_FOUND
+        )
+        return TaskAccess(task=task, parent=parent)
+
+    return dependency
+
+
+@dataclass
+class CommentAccess:
+    comment: Comment
+    task: Task
+    parent: ProjectAccess
+
+    @property
+    def project(self) -> Project:
+        return self.parent.project
+
+    @property
+    def workspace(self) -> Workspace:
+        return self.parent.workspace
+
+    @property
+    def user(self) -> User:
+        return self.parent.user
+
+    @property
+    def role(self) -> WorkspaceRole:
+        return self.parent.role
+
+
+async def _project_access(
+    session: AsyncSession,
+    project: Project,
+    user: User,
+    minimum: WorkspaceRole,
+    not_found_detail: str,
+) -> ProjectAccess:
+    access = await resolve_workspace_access(
+        session, project.workspace_id, user, minimum, not_found_detail
+    )
+    return ProjectAccess(
+        project=project, workspace=access.workspace, user=user, role=access.role
+    )
+
+
+def require_comment_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+    async def dependency(
+        comment_id: Annotated[int, Path(ge=1)],
+        user: CurrentUser,
+        session: DBSession,
+    ) -> CommentAccess:
+        row = await CommentRepository(session).get_with_task_and_project(comment_id)
+        if row is None:
+            raise NotFoundException(messages.COMMENT_NOT_FOUND)
+        comment, task, project = row
+        parent = await _project_access(
+            session, project, user, minimum, messages.COMMENT_NOT_FOUND
+        )
+        return CommentAccess(comment=comment, task=task, parent=parent)
+
+    return dependency
+
+
+V, E, O = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
+
+WorkspaceViewer = Annotated[WorkspaceAccess, Depends(require_workspace_role(V))]
+WorkspaceEditor = Annotated[WorkspaceAccess, Depends(require_workspace_role(E))]
+WorkspaceOwner = Annotated[WorkspaceAccess, Depends(require_workspace_role(O))]
+
+ProjectViewer = Annotated[ProjectAccess, Depends(require_project_role(V))]
+ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(E))]
+
+TaskViewer = Annotated[TaskAccess, Depends(require_task_role(V))]
+TaskEditor = Annotated[TaskAccess, Depends(require_task_role(E))]
+
+CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(V))]

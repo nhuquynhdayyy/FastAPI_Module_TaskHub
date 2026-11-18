@@ -1,16 +1,17 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from pydantic import ConfigDict, Field, field_validator
 
+from app.core import messages
 from app.core.constants import (
     DESCRIPTION_MAX_LENGTH,
     TITLE_MAX_LENGTH,
     TITLE_MIN_LENGTH,
 )
-from app.core import messages
 from app.core.enums import TaskPriority, TaskStatus
-from app.schemas.base import AppBaseModel
-from typing import Any
+from app.schemas.base import AppBaseModel, UpdateModel
+from app.schemas.label import LabelResponse
+from dataclasses import dataclass
 
 
 class TaskCreate(AppBaseModel):
@@ -21,8 +22,20 @@ class TaskCreate(AppBaseModel):
     due_date: datetime | None = None
     assignee_id: int | None = Field(default=None, ge=1)
 
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_in_past(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return value
+        aware = value if value.tzinfo else value.replace(tzinfo=UTC)
+        if aware < datetime.now(UTC):
+            raise ValueError(messages.DUE_DATE_IN_PAST)
+        return value
 
-class TaskUpdate(AppBaseModel):
+
+class TaskUpdate(UpdateModel):
+    non_nullable = ("title", "status", "priority")
+
     title: str | None = Field(
         default=None, min_length=TITLE_MIN_LENGTH, max_length=TITLE_MAX_LENGTH
     )
@@ -31,13 +44,6 @@ class TaskUpdate(AppBaseModel):
     priority: TaskPriority | None = None
     due_date: datetime | None = None
     assignee_id: int | None = Field(default=None, ge=1)
-
-    @field_validator("title", "status", "priority")
-    @classmethod
-    def not_null(cls, value: Any) -> Any:
-        if value is None:
-            raise ValueError(messages.FIELD_CANNOT_BE_NULL)
-        return value
 
 
 class TaskResponse(AppBaseModel):
@@ -53,3 +59,11 @@ class TaskResponse(AppBaseModel):
     due_date: datetime | None
     created_by: int
     created_at: datetime
+    labels: list[LabelResponse]
+
+
+@dataclass(frozen=True)
+class TaskFilter:
+    statuses: list[TaskStatus] | None = None
+    priorities: list[TaskPriority] | None = None
+    assignee_id: int | None = None

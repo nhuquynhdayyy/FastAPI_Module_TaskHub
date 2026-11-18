@@ -18,6 +18,9 @@ TEST_DATABASE_URL = os.getenv(
 )
 assert "test" in TEST_DATABASE_URL, "TEST_DATABASE_URL phải trỏ vào DB test!"
 
+API = "/api/v1"
+PASSWORD = "password123"
+
 
 @pytest_asyncio.fixture
 async def engine():
@@ -54,3 +57,51 @@ async def client(engine):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+async def login_as(client, email, full_name="User"):
+    await client.post(
+        f"{API}/auth/register",
+        json={"email": email, "full_name": full_name, "password": PASSWORD},
+    )
+    resp = await client.post(
+        f"{API}/auth/login", data={"username": email, "password": PASSWORD}
+    )
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+@pytest_asyncio.fixture
+async def world(client):
+    owner = await login_as(client, "t-owner@example.com", "Owner")
+    editor = await login_as(client, "t-editor@example.com", "Editor")
+    viewer = await login_as(client, "t-viewer@example.com", "Viewer")
+    outsider = await login_as(client, "t-out@example.com", "Outsider")
+
+    resp = await client.post(f"{API}/workspaces", json={"name": "WS1"}, headers=owner)
+    ws_id = resp.json()["id"]
+    for email, role in (
+        ("t-editor@example.com", "EDITOR"),
+        ("t-viewer@example.com", "VIEWER"),
+    ):
+        r = await client.post(
+            f"{API}/workspaces/{ws_id}/members",
+            json={"email": email, "role": role},
+            headers=owner,
+        )
+        assert r.status_code == 201, r.text
+
+    resp = await client.post(
+        f"{API}/workspaces/{ws_id}/projects", json={"name": "Project 1"}, headers=owner
+    )
+    project_id = resp.json()["id"]
+    return {
+        "client": client,
+        "ws_id": ws_id,
+        "project_id": project_id,
+        "owner": owner,
+        "editor": editor,
+        "viewer": viewer,
+        "outsider": outsider,
+        "url": f"{API}/projects/{project_id}/tasks",
+    }

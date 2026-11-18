@@ -3,8 +3,8 @@ from typing import Any, Generic, TypeVar
 from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE
 from app.models.base import Base
+from app.core.pagination import Pagination
 
 ModelT = TypeVar("ModelT", bound=Base)
 
@@ -18,21 +18,21 @@ class BaseRepository(Generic[ModelT]):
         return await self.session.get(self.model, obj_id)
 
     async def paginate(
-        self, stmt: Select[tuple[ModelT]], *, page: int, limit: int
+        self, stmt: Select[tuple[ModelT]], pagination: Pagination
     ) -> tuple[list[ModelT], int]:
         total = await self.session.scalar(
             select(func.count()).select_from(stmt.order_by(None).subquery())
         )
         result = await self.session.scalars(
-            stmt.offset((page - 1) * limit).limit(limit)
+            stmt.offset(pagination.offset).limit(pagination.limit)
         )
         return list(result.all()), total or 0
 
     async def get_multi(
-        self, *, page: int = DEFAULT_PAGE, limit: int = DEFAULT_PAGE_SIZE
+        self, pagination: Pagination = Pagination()
     ) -> tuple[list[ModelT], int]:
         stmt = select(self.model).order_by(*inspect(self.model).primary_key)
-        return await self.paginate(stmt, page=page, limit=limit)
+        return await self.paginate(stmt, pagination)
 
     async def create(self, **data: Any) -> ModelT:
         obj = self.model(**data)

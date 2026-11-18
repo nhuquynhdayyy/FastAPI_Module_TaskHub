@@ -1,13 +1,21 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core import messages
-from app.core.exceptions import NotFoundException
+from app.core.enums import ProjectStatus
+from app.core.exceptions import ConflictException, BadRequestException
 from app.db.session import DBSession
-from app.models import Task
+from app.dependencies import ProjectAccess, TaskAccess
+from app.models import Project, Task
 from app.repositories.task import TaskRepository
-from app.repositories.user import UserRepository
+from app.repositories.workspace import WorkspaceRepository
 from app.schemas.task import TaskCreate, TaskUpdate
+from app.core.pagination import Pagination
+from app.schemas.task import TaskFilter
+
+
+def ensure_project_active(project: Project) -> None:
+    if project.status == ProjectStatus.ARCHIVED:
+        raise ConflictException(messages.PROJECT_ARCHIVED)
 
 
 class TaskService:
@@ -15,48 +23,53 @@ class TaskService:
         self,
         session: AsyncSession,
         repository: TaskRepository,
-        user_repository: UserRepository,
+        workspace_repository: WorkspaceRepository,
     ) -> None:
         self.session = session
         self.repository = repository
-        self.user_repository = user_repository
+        self.workspace_repository = workspace_repository
 
-    async def _ensure_assignee_exists(self, assignee_id: int | None) -> None:
-        if (
-            assignee_id is not None
-            and await self.user_repository.get(assignee_id) is None
-        ):
-            raise NotFoundException(messages.ASSIGNEE_NOT_FOUND)
+    async def _ensure_assignee_in_workspace(
+        self, workspace_id: int, assignee_id: int | None
+    ) -> None:
+        if assignee_id is None:
+            return
+        member = await self.workspace_repository.get_member(workspace_id, assignee_id)
+        if member is None:
+            raise BadRequestException(messages.ASSIGNEE_NOT_IN_WORKSPACE)
 
-    async def list_tasks(self, page: int, limit: int) -> tuple[list[Task], int]:
-        return await self.repository.get_multi(page=page, limit=limit)
+    async def list_tasks(
+        self, project_id: int, pagination: Pagination, filters: TaskFilter
+    ) -> tuple[list[Task], int]:
+        return await self.repository.list_by_project(project_id, pagination, filters)
 
-    async def get_task(self, task_id: int) -> Task:
-        task = await self.repository.get(task_id)
-        if task is None:
-            raise NotFoundException(messages.TASK_NOT_FOUND)
-        return task
-
-    async def create_task(self, data: TaskCreate, user_id: int) -> Task:
+    async def create_task(self, access: ProjectAccess, data: TaskCreate) -> Task:
+        ensure_project_active(access.project)
+        await self._ensure_assignee_in_workspace(access.workspace.id, data.assignee_id)
         task = await self.repository.create(
             **data.model_dump(),
-            project_id=settings.DEFAULT_PROJECT_ID,
-            created_by=user_id,
+            project_id=access.project.id,
+            created_by=access.user.id,
         )
         await self.session.commit()
         return task
 
-    async def update_task(self, task_id: int, data: TaskUpdate) -> Task:
-        task = await self.get_task(task_id)
-        task = await self.repository.update(task, data.model_dump(exclude_unset=True))
+    async def update_task(self, access: TaskAccess, data: TaskUpdate) -> Task:
+        ensure_project_active(access.project)
+        changes = data.model_dump(exclude_unset=True)
+        if not changes:
+            return access.task
+        await self._ensure_assignee_in_workspace(
+            access.workspace.id, changes.get("assignee_id")
+        )
+        task = await self.repository.update(access.task, changes)
         await self.session.commit()
         return task
 
-    async def delete_task(self, task_id: int) -> None:
-        task = await self.get_task(task_id)
+    async def delete_task(self, task: Task) -> None:
         await self.repository.delete(task)
         await self.session.commit()
 
 
 def get_task_service(session: DBSession) -> TaskService:
-    return TaskService(session, TaskRepository(session), UserRepository(session))
+    return TaskService(session, TaskRepository(session), WorkspaceRepository(session))

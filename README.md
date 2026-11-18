@@ -2,7 +2,7 @@
 
 ## Tech stack
 
-FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16
+FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16 | pytest
 
 ## Cấu trúc project
 
@@ -13,9 +13,11 @@ app/
 ├── repositories/       # Truy cập DB (BaseRepository[T] + CRUD async)
 ├── models/             # SQLAlchemy models
 ├── schemas/            # Pydantic schemas
-├── core/               # Cấu hình, enums
-└── db/                 # Engine, session
+├── core/               # Cấu hình, enums, constants, messages
+├── db/                 # Engine, session
+└── dependencies.py     # Xác thực + phân quyền (workspace, project, task, comment)
 migrations/             # Alembic migrations
+tests/                  # pytest
 ```
 
 ## Cài đặt
@@ -36,8 +38,7 @@ docker run --name taskhub-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskhu
 
 ### 3. Cấu hình biến môi trường
 
-Sao chép `.env.example` thành `.env` rồi chỉnh giá trị
-
+Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. `SECRET_KEY` cần tối thiểu 32 ký tự.
 
 ### 4. Tạo bảng (migration)
 
@@ -85,21 +86,59 @@ Có hai tầng role:
 | Hành động | VIEWER | EDITOR | OWNER |
 |---|:---:|:---:|:---:|
 | Xem workspace, project, thành viên | ✅ | ✅ | ✅ |
+| Xem task, label, danh sách task (lọc, phân trang) | ✅ | ✅ | ✅ |
 | Tạo, sửa, archive project | ❌ | ✅ | ✅ |
+| Tạo, sửa, xóa task; giao việc; đổi status | ❌ | ✅ | ✅ |
+| Tạo, sửa, xóa label; gán, bỏ label cho task | ❌ | ✅ | ✅ |
+| Thêm bình luận | ❌ | ✅ | ✅ |
+| Xóa bình luận của chính mình | ❌ | ✅ | ✅ |
+| Xóa bình luận của người khác | ❌ | ❌ | ✅ |
 | Xóa project | ❌ | ❌ | ✅ |
 | Sửa, xóa workspace | ❌ | ❌ | ✅ |
 | Mời, xóa thành viên | ❌ | ❌ | ✅ |
 
-- ADMIN toàn hệ thống vượt qua mọi kiểm tra trong workspace.
+- ADMIN toàn hệ thống vượt qua mọi kiểm tra trong workspace (tính như OWNER).
 - Người không phải thành viên nhận 404; thành viên thiếu quyền nhận 403.
 - Không thể xóa chủ sở hữu khỏi workspace.
 - Project luôn được truy vấn kèm workspace_id.
+
+### Phân quyền cho Task, Label, Comment
+
+Các route `/projects/{id}/...`, `/tasks/{id}` và `/comments/{id}` không có `workspace_id` trên URL, nên quyền được suy ngược theo chuỗi:
+
+```
+comment → task → project → workspace → role
+```
+
+Toàn bộ dùng chung một hàm `resolve_workspace_access` trong `app/dependencies.py`, qua các dependency `require_workspace_role`, `require_project_role`, `require_task_role`, `require_comment_role`.
+
+Quy tắc trả lỗi:
+
+| Tình huống | Status | Thông báo |
+|---|---|---|
+| Chưa đăng nhập | 401 | |
+| Không phải thành viên workspace | 404 | Đúng thông báo của tài nguyên được hỏi (`Project không tồn tại`, `Task không tồn tại`, `Không tìm thấy bình luận`) |
+| Tài nguyên không tồn tại | 404 | Giống hệt trường hợp ở dòng trên, nên không lộ ID có thật |
+| Thành viên thiếu quyền | 403 | |
+| Assignee không phải thành viên workspace | 400 | Dữ liệu body sai, không phải tài nguyên không tồn tại |
+| Project ARCHIVED, tạo hoặc sửa task | 409 | |
+| Tên label đã tồn tại trong project, hoặc gán trùng label cho task | 409 | |
+| Dữ liệu sai (status không hợp lệ, `limit=0`, bình luận rỗng) | 422 | |
+
+Các quy tắc nghiệp vụ:
+
+- Assignee phải là thành viên workspace của project, nếu không trả 400.
+- Label chỉ được gán cho task cùng project.
+- Project ARCHIVED không cho tạo, sửa task. Bình luận và xóa vẫn được.
+- Xóa task kèm xóa các bình luận của task.
+- Xóa bình luận: chỉ tác giả hoặc OWNER.
 
 ### Test trên Swagger
 
 1. `POST /api/v1/auth/register` để tạo tài khoản.
 2. Bấm Authorize, nhập email và mật khẩu.
-3. Gọi các endpoint cần đăng nhập.
+3. Tạo workspace, rồi project trong workspace đó.
+4. Gọi các endpoint task, label, comment.
 
 ## API hiện có
 
@@ -126,5 +165,55 @@ Có hai tầng role:
 | PATCH | `/api/v1/workspaces/{workspace_id}/projects/{project_id}` | Sửa project | EDITOR+ |
 | POST | `/api/v1/workspaces/{workspace_id}/projects/{project_id}/archive` | Lưu trữ project | EDITOR+ |
 | DELETE | `/api/v1/workspaces/{workspace_id}/projects/{project_id}` | Xóa project | OWNER |
-| POST/GET/PATCH/DELETE | `/api/v1/tasks/...` | CRUD task (tạm thời, sẽ chuyển theo project) | Đăng nhập |
+| POST | `/api/v1/projects/{project_id}/tasks` | Tạo task (`created_by` là user đăng nhập) | EDITOR+ |
+| GET | `/api/v1/projects/{project_id}/tasks` | Danh sách task (lọc `status`, `priority` nhận nhiều giá trị, `assignee_id`; phân trang `page`, `limit`) | VIEWER+ |
+| GET | `/api/v1/tasks/{task_id}` | Chi tiết task | VIEWER+ |
+| PATCH | `/api/v1/tasks/{task_id}` | Sửa task, giao việc, đổi status, priority, due_date | EDITOR+ |
+| DELETE | `/api/v1/tasks/{task_id}` | Xóa task (kèm bình luận) | EDITOR+ |
+| GET | `/api/v1/projects/{project_id}/labels` | Danh sách label của project | VIEWER+ |
+| POST | `/api/v1/projects/{project_id}/labels` | Tạo label | EDITOR+ |
+| PATCH | `/api/v1/projects/{project_id}/labels/{label_id}` | Sửa label | EDITOR+ |
+| DELETE | `/api/v1/projects/{project_id}/labels/{label_id}` | Xóa label | EDITOR+ |
+| POST | `/api/v1/tasks/{task_id}/labels/{label_id}` | Gán label cho task (cùng project) | EDITOR+ |
+| DELETE | `/api/v1/tasks/{task_id}/labels/{label_id}` | Bỏ label khỏi task | EDITOR+ |
+| POST | `/api/v1/tasks/{task_id}/comments` | Thêm bình luận | EDITOR+ |
+| DELETE | `/api/v1/comments/{comment_id}` | Xóa bình luận | Tác giả hoặc OWNER |
 | GET | `/health` | Kiểm tra trạng thái | Công khai |
+
+### Ví dụ lọc và phân trang
+
+```
+GET /api/v1/projects/1/tasks?status=TODO&status=IN_PROGRESS&priority=HIGH&assignee_id=3&page=1&limit=10
+```
+
+Truyền lặp tham số để lọc nhiều giá trị: `status=TODO&status=IN_PROGRESS` nghĩa là TODO hoặc IN_PROGRESS. `priority` làm tương tự. `assignee_id` chỉ nhận một giá trị.
+
+Phân trang: `page` bắt đầu từ 1, `limit` có giá trị mặc định và tối đa định nghĩa trong `app/core/constants.py`. Danh sách task sắp xếp theo `created_at` giảm dần, rồi `id` giảm dần.
+
+## Test
+
+```bash
+pytest -q
+```
+
+| File | Nội dung |
+|---|---|
+| `tests/test_tasks_api.py` | Task: quyền, lọc, phân trang, project ARCHIVED, assignee |
+| `tests/test_labels_api.py` | Label: quyền, gán label khác project, trùng tên |
+| `tests/test_comments_api.py` | Comment: thêm, xóa theo tác giả hoặc OWNER, 404 không lộ tài nguyên |
+| `tests/test_task_repository.py` | Repository: lọc, phân trang |
+| `tests/test_services.py` | Service: danh sách project theo status |
+
+## Migration
+
+```bash
+alembic upgrade head
+```
+
+Tạo migration mới sau khi đổi model:
+
+```bash
+alembic revision --autogenerate -m "mô tả ngắn"
+```
+
+Luôn mở file sinh ra để kiểm tra trước khi chạy `upgrade`.
