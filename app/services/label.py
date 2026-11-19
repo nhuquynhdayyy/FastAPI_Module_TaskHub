@@ -13,6 +13,7 @@ from app.repositories.label import LabelRepository
 from app.schemas.label import LabelCreate, LabelUpdate
 from app.services.task import ensure_project_active
 from app.services.cache_service import CacheService, get_cache_service
+from app.core.pagination import Pagination
 
 
 class LabelService:
@@ -26,8 +27,10 @@ class LabelService:
         self.repository = repository
         self.cache = cache
 
-    async def list_labels(self, project_id: int) -> list[Label]:
-        return await self.repository.list_by_project(project_id)
+    async def list_labels(
+        self, project_id: int, pagination: Pagination
+    ) -> tuple[list[Label], int]:
+        return await self.repository.list_by_project(project_id, pagination)
 
     async def get_label(self, project_id: int, label_id: int) -> Label:
         label = await self.repository.get_in_project(project_id, label_id)

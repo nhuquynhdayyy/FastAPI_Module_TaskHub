@@ -2,9 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
+from app.api.v1.params import PaginationDep
 from app.api.v1.responses import FORBIDDEN, NOT_FOUND
-from app.dependencies import CommentViewer, TaskEditor
+from app.dependencies import CommentViewer, TaskEditor, TaskViewer
 from app.schemas.comment import CommentCreate, CommentResponse
+from app.schemas.common import Page
 from app.services.comment import CommentService, get_comment_service
 
 task_router = APIRouter()
@@ -12,6 +14,24 @@ task_router = APIRouter()
 router = APIRouter()
 
 CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
+
+
+@task_router.get(
+    "",
+    response_model=Page[CommentResponse],
+    summary="Danh sách bình luận của task (phân trang)",
+    responses={**NOT_FOUND},
+)
+async def list_comments(
+    access: TaskViewer, service: CommentServiceDep, pagination: PaginationDep
+) -> Page[CommentResponse]:
+    comments, total = await service.list_comments(access.task.id, pagination)
+    return Page[CommentResponse](
+        items=[CommentResponse.model_validate(c) for c in comments],
+        total=total,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
 
 
 @task_router.post(

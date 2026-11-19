@@ -7,6 +7,8 @@ from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor
 from app.schemas.label import LabelCreate, LabelResponse, LabelUpdate
 from app.schemas.task import TaskResponse
 from app.services.label import LabelService, get_label_service
+from app.api.v1.params import PaginationDep
+from app.schemas.common import Page
 
 project_router = APIRouter()
 
@@ -36,15 +38,20 @@ async def create_label(
 
 @project_router.get(
     "",
-    response_model=list[LabelResponse],
-    summary="Danh sách label của project",
+    response_model=Page[LabelResponse],
+    summary="Danh sách label của project (phân trang)",
     responses={**NOT_FOUND},
 )
 async def list_labels(
-    access: ProjectViewer, service: LabelServiceDep
-) -> list[LabelResponse]:
-    labels = await service.list_labels(access.project.id)
-    return [LabelResponse.model_validate(label) for label in labels]
+    access: ProjectViewer, service: LabelServiceDep, pagination: PaginationDep
+) -> Page[LabelResponse]:
+    labels, total = await service.list_labels(access.project.id, pagination)
+    return Page[LabelResponse](
+        items=[LabelResponse.model_validate(label) for label in labels],
+        total=total,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
 
 
 @project_router.get(

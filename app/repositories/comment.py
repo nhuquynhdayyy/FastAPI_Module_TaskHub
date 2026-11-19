@@ -1,13 +1,24 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Comment, Task, Project
+from app.core.pagination import Pagination
+from app.models import Comment, Project, Task
 from app.repositories.base import BaseRepository
-from sqlalchemy import select
 
 
 class CommentRepository(BaseRepository[Comment]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Comment, session)
+
+    async def list_by_task(
+        self, task_id: int, pagination: Pagination
+    ) -> tuple[list[Comment], int]:
+        stmt = (
+            select(Comment)
+            .where(Comment.task_id == task_id)
+            .order_by(Comment.created_at, Comment.id)
+        )
+        return await self.paginate(stmt, pagination)
 
     async def get_with_task_and_project(
         self, comment_id: int
