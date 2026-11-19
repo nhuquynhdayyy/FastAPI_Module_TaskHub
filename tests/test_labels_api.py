@@ -30,7 +30,9 @@ async def test_editor_creates_label_viewer_lists_it(world):
     await make_label(world, color="#FF0000")
     resp = await world["client"].get(labels_url(world), headers=world["viewer"])
     assert resp.status_code == 200
-    assert [(lb["name"], lb["color"]) for lb in resp.json()] == [("bug", "#FF0000")]
+    assert [(lb["name"], lb["color"]) for lb in resp.json()["items"]] == [
+        ("bug", "#FF0000")
+    ]
 
 
 async def test_viewer_cannot_create_label(world):
@@ -167,3 +169,15 @@ async def test_archived_project_blocks_assign(world):
         f"{API}/tasks/{task['id']}/labels/{label['id']}", headers=world["editor"]
     )
     assert resp.status_code == 409
+
+
+async def test_list_labels_has_total_and_pagination(world):
+    for name in ("a", "b", "c"):
+        await make_label(world, name)
+    resp = await world["client"].get(
+        labels_url(world), params={"page": 2, "limit": 2}, headers=world["viewer"]
+    )
+    body = resp.json()
+    assert resp.status_code == 200
+    assert (body["total"], body["page"], body["limit"]) == (3, 2, 2)
+    assert [lb["name"] for lb in body["items"]] == ["c"]

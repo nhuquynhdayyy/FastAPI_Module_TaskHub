@@ -110,3 +110,38 @@ async def test_deleting_task_removes_its_comments(world, engine):
     )
     assert resp.status_code == 204
     assert await count_comments(engine) == 0
+
+
+async def list_comments(w, task_id, headers=None, **params):
+    return await w["client"].get(
+        f"{API}/tasks/{task_id}/comments",
+        params=params,
+        headers=headers or w["viewer"],
+    )
+
+
+async def test_viewer_lists_comments_oldest_first_with_total(world):
+    task = await make_task(world)
+    for text in ("c1", "c2", "c3"):
+        await add_comment(world, task["id"], content=text)
+    resp = await list_comments(world, task["id"], page=1, limit=2)
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["total"] == 3
+    assert [c["content"] for c in body["items"]] == ["c1", "c2"]
+    page2 = (await list_comments(world, task["id"], page=2, limit=2)).json()
+    assert [c["content"] for c in page2["items"]] == ["c3"]
+
+
+async def test_outsider_cannot_list_comments(world):
+    task = await make_task(world)
+    resp = await list_comments(world, task["id"], headers=world["outsider"])
+    assert resp.status_code == 404
+
+
+async def test_list_comments_only_returns_that_tasks_comments(world):
+    t1, t2 = await make_task(world), await make_task(world)
+    await add_comment(world, t1["id"], content="của t1")
+    await add_comment(world, t2["id"], content="của t2")
+    body = (await list_comments(world, t1["id"])).json()
+    assert [c["content"] for c in body["items"]] == ["của t1"]
