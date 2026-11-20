@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 
 from app.api.v1.params import PaginationDep
+from app.api.v1.responses import FORBIDDEN, NOT_FOUND
 from app.dependencies import CurrentUser, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
 from app.schemas.workspace import (
@@ -19,7 +20,12 @@ router = APIRouter()
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 
 
-@router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=WorkspaceResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Tạo workspace",
+)
 async def create_workspace(
     data: WorkspaceCreate, user: CurrentUser, service: WorkspaceServiceDep
 ) -> WorkspaceResponse:
@@ -27,7 +33,11 @@ async def create_workspace(
     return WorkspaceResponse.model_validate(workspace)
 
 
-@router.get("", response_model=Page[WorkspaceResponse])
+@router.get(
+    "",
+    response_model=Page[WorkspaceResponse],
+    summary="Danh sách workspace của tôi",
+)
 async def list_my_workspaces(
     user: CurrentUser,
     service: WorkspaceServiceDep,
@@ -42,12 +52,22 @@ async def list_my_workspaces(
     )
 
 
-@router.get("/{workspace_id}", response_model=WorkspaceResponse)
+@router.get(
+    "/{workspace_id}",
+    response_model=WorkspaceResponse,
+    summary="Chi tiết workspace",
+    responses={**NOT_FOUND},
+)
 async def get_workspace(access: WorkspaceViewer) -> WorkspaceResponse:
     return WorkspaceResponse.model_validate(access.workspace)
 
 
-@router.patch("/{workspace_id}", response_model=WorkspaceResponse)
+@router.patch(
+    "/{workspace_id}",
+    response_model=WorkspaceResponse,
+    summary="Cập nhật workspace (chỉ owner)",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def update_workspace(
     data: WorkspaceUpdate, access: WorkspaceOwner, service: WorkspaceServiceDep
 ) -> WorkspaceResponse:
@@ -55,14 +75,24 @@ async def update_workspace(
     return WorkspaceResponse.model_validate(workspace)
 
 
-@router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{workspace_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Xóa workspace (chỉ owner)",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def delete_workspace(
     access: WorkspaceOwner, service: WorkspaceServiceDep
 ) -> None:
     await service.delete_workspace(access.workspace)
 
 
-@router.get("/{workspace_id}/members", response_model=list[MemberResponse])
+@router.get(
+    "/{workspace_id}/members",
+    response_model=list[MemberResponse],
+    summary="Danh sách thành viên",
+    responses={**NOT_FOUND},
+)
 async def list_members(
     access: WorkspaceViewer, service: WorkspaceServiceDep
 ) -> list[MemberResponse]:
@@ -74,6 +104,8 @@ async def list_members(
     "/{workspace_id}/members",
     response_model=MemberResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Thêm thành viên (chỉ owner)",
+    responses={**NOT_FOUND, **FORBIDDEN},
 )
 async def add_member(
     data: MemberAdd, access: WorkspaceOwner, service: WorkspaceServiceDep
@@ -83,7 +115,10 @@ async def add_member(
 
 
 @router.delete(
-    "/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT
+    "/{workspace_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Xóa thành viên (chỉ owner)",
+    responses={**NOT_FOUND, **FORBIDDEN},
 )
 async def remove_member(
     user_id: Annotated[int, Path(ge=1)],

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 
 from app.api.v1.params import PaginationDep
+from app.api.v1.responses import FORBIDDEN, NOT_FOUND
 from app.core.enums import ProjectStatus
 from app.dependencies import WorkspaceEditor, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
@@ -15,7 +16,13 @@ ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
 ProjectId = Annotated[int, Path(ge=1)]
 
 
-@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Tạo project",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def create_project(
     data: ProjectCreate, access: WorkspaceEditor, service: ProjectServiceDep
 ) -> ProjectResponse:
@@ -23,7 +30,12 @@ async def create_project(
     return ProjectResponse.model_validate(project)
 
 
-@router.get("", response_model=Page[ProjectResponse])
+@router.get(
+    "",
+    response_model=Page[ProjectResponse],
+    summary="Danh sách project",
+    responses={**NOT_FOUND},
+)
 async def list_projects(
     access: WorkspaceViewer,
     service: ProjectServiceDep,
@@ -41,7 +53,12 @@ async def list_projects(
     )
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    summary="Chi tiết project",
+    responses={**NOT_FOUND},
+)
 async def get_project(
     project_id: ProjectId, access: WorkspaceViewer, service: ProjectServiceDep
 ) -> ProjectResponse:
@@ -49,7 +66,12 @@ async def get_project(
     return ProjectResponse.model_validate(project)
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
+@router.patch(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    summary="Cập nhật project",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def update_project(
     project_id: ProjectId,
     data: ProjectUpdate,
@@ -60,7 +82,12 @@ async def update_project(
     return ProjectResponse.model_validate(project)
 
 
-@router.post("/{project_id}/archive", response_model=ProjectResponse)
+@router.post(
+    "/{project_id}/archive",
+    response_model=ProjectResponse,
+    summary="Lưu trữ project",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def archive_project(
     project_id: ProjectId, access: WorkspaceEditor, service: ProjectServiceDep
 ) -> ProjectResponse:
@@ -68,7 +95,12 @@ async def archive_project(
     return ProjectResponse.model_validate(project)
 
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{project_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Xóa project (chỉ owner)",
+    responses={**NOT_FOUND, **FORBIDDEN},
+)
 async def delete_project(
     project_id: ProjectId, access: WorkspaceOwner, service: ProjectServiceDep
 ) -> None:
