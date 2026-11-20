@@ -18,6 +18,8 @@ app/
 └── dependencies.py     # Xác thực + phân quyền (workspace, project, task, comment)
 migrations/             # Alembic migrations
 tests/                  # pytest
+Dockerfile              # Image app (nhiều tầng, chạy bằng user thường)
+docker-compose.yml      # App + PostgreSQL + Redis
 ```
 
 ## Cài đặt
@@ -52,6 +54,8 @@ Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. `SECRET_KEY` c�
 | `REDIS_URL` | (bắt buộc) | Địa chỉ Redis, ví dụ `redis://localhost:6379/0`. Thiếu thì app báo lỗi ngay khi khởi động |
 | `CACHE_TTL_SECONDS` | `60` | Thời gian sống của cache, phải lớn hơn 0 |
 
+Khi chạy bằng Docker Compose cần thêm `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
+
 ### 5. Tạo bảng (migration)
 
 ```bash
@@ -64,7 +68,7 @@ alembic upgrade head
 python -m scripts.seed
 ```
 
-Ghi hai số in ra (`DEFAULT_USER_ID`, `DEFAULT_PROJECT_ID`) vào file `.env`.
+Script in ra `User id` và `Project id` của dữ liệu mẫu, dùng khi thử API (không cần ghi vào `.env`).
 
 ### 7. Chạy ứng dụng
 
@@ -74,6 +78,36 @@ uvicorn app.main:app --reload
 
 - Swagger UI: http://127.0.0.1:8000/docs
 - Health check: http://127.0.0.1:8000/health
+
+## Chạy bằng Docker Compose
+
+Chạy cả app, PostgreSQL và Redis bằng một lệnh, không cần cài Python hay làm các bước 1 đến 7 ở trên.
+
+1. Tạo `.env` từ mẫu và điền giá trị thật:
+
+   ```bash
+   copy .env.example .env
+   ```
+
+   Cần đặt `SECRET_KEY` (tối thiểu 32 ký tự) và `POSTGRES_PASSWORD` (chỉ dùng chữ và số). Sinh khóa: `python -c "import secrets; print(secrets.token_hex(32))"`
+
+2. Chạy toàn bộ. Migration tự chạy khi app khởi động:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. Nạp dữ liệu mẫu (tùy chọn). Tài khoản mẫu: `seed@example.com` / `Seed@12345`:
+
+   ```bash
+   docker compose exec app python -m scripts.seed
+   ```
+
+   Hoặc tự đăng ký bằng `POST /api/v1/auth/register`.
+
+4. Mở http://127.0.0.1:8000/docs
+
+Dừng: `docker compose down` (giữ dữ liệu) hoặc `docker compose down -v` (xóa cả dữ liệu DB).
 
 ## Authentication
 
@@ -251,5 +285,3 @@ Tạo migration mới sau khi đổi model:
 ```bash
 alembic revision --autogenerate -m "mô tả ngắn"
 ```
-
-Luôn mở file sinh ra để kiểm tra trước khi chạy `upgrade`.
