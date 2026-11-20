@@ -26,7 +26,12 @@ api_router.include_router(
     responses=PROTECTED_RESPONSES,
 )
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
-api_router.include_router(users.router, prefix="/users", tags=["Users"])
+api_router.include_router(
+    users.router,
+    prefix="/users",
+    tags=["Users"],
+    responses=PROTECTED_RESPONSES,
+)
 api_router.include_router(
     workspaces.router,
     prefix="/workspaces",
