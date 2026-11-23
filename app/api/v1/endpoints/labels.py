@@ -2,13 +2,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
+from app.api.v1.params import PaginationDep
 from app.api.v1.responses import FORBIDDEN, NOT_FOUND
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor
+from app.schemas.common import Page
 from app.schemas.label import LabelCreate, LabelResponse, LabelUpdate
 from app.schemas.task import TaskResponse
 from app.services.label import LabelService, get_label_service
-from app.api.v1.params import PaginationDep
-from app.schemas.common import Page
 
 project_router = APIRouter()
 
