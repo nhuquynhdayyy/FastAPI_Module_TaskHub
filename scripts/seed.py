@@ -38,8 +38,8 @@ async def main() -> None:
         session.add(project)
         await session.commit()
 
-        print("DEFAULT_USER_ID =", user.id)
-        print("DEFAULT_PROJECT_ID =", project.id)
+        print("Seed user id:", user.id)
+        print("Seed project id:", project.id)
 
     await engine.dispose()
 
