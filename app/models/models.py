@@ -173,10 +173,11 @@ class Label(Base):
 
 class Comment(Base):
     __tablename__ = "comments"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    task_id: Mapped[int] = mapped_column(
-        ForeignKey("tasks.id", ondelete="CASCADE"), index=True
+    __table_args__ = (
+        Index("ix_comments_task_id_created_at_id", "task_id", "created_at", "id"),
     )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
     author_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
