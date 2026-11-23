@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.params import PaginationDep
-from app.api.v1.responses import FORBIDDEN, NOT_FOUND
+from app.api.v1.responses import bad_request, conflict, forbidden, not_found
+from app.core import messages
 from app.core.enums import TaskPriority, TaskStatus
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor, TaskViewer
 from app.schemas.common import Page
@@ -15,6 +16,11 @@ project_router = APIRouter()
 router = APIRouter()
 
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
+
+PROJECT_404 = "Project không tồn tại, hoặc người dùng không thuộc workspace"
+TASK_404 = "Task không tồn tại, hoặc người dùng không thuộc workspace"
+ASSIGNEE_400 = "Assignee không phải thành viên workspace"
+ARCHIVED_409 = "Project đã ARCHIVED"
 
 
 def get_task_filter(
@@ -34,12 +40,10 @@ TaskFilterDep = Annotated[TaskFilter, Depends(get_task_filter)]
     status_code=status.HTTP_201_CREATED,
     summary="Tạo task trong project",
     responses={
-        **NOT_FOUND,
-        **FORBIDDEN,
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Assignee không phải thành viên workspace"
-        },
-        status.HTTP_409_CONFLICT: {"description": "Project đã ARCHIVED"},
+        **not_found(messages.PROJECT_NOT_FOUND, PROJECT_404),
+        **forbidden(),
+        **bad_request(messages.ASSIGNEE_NOT_IN_WORKSPACE, ASSIGNEE_400),
+        **conflict(messages.PROJECT_ARCHIVED, ARCHIVED_409),
     },
 )
 async def create_task(
@@ -53,7 +57,7 @@ async def create_task(
     "",
     response_model=Page[TaskResponse],
     summary="Danh sách task (lọc, phân trang)",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.PROJECT_NOT_FOUND, PROJECT_404)},
 )
 async def list_tasks(
     access: ProjectViewer,
@@ -68,7 +72,7 @@ async def list_tasks(
     "/{task_id}",
     response_model=TaskResponse,
     summary="Chi tiết task",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.TASK_NOT_FOUND, TASK_404)},
 )
 async def get_task(access: TaskViewer) -> TaskResponse:
     return TaskResponse.model_validate(access.task)
@@ -79,12 +83,10 @@ async def get_task(access: TaskViewer) -> TaskResponse:
     response_model=TaskResponse,
     summary="Sửa task",
     responses={
-        **NOT_FOUND,
-        **FORBIDDEN,
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Assignee không phải thành viên workspace"
-        },
-        status.HTTP_409_CONFLICT: {"description": "Project đã ARCHIVED"},
+        **not_found(messages.TASK_NOT_FOUND, TASK_404),
+        **forbidden(),
+        **bad_request(messages.ASSIGNEE_NOT_IN_WORKSPACE, ASSIGNEE_400),
+        **conflict(messages.PROJECT_ARCHIVED, ARCHIVED_409),
     },
 )
 async def update_task(
@@ -98,7 +100,10 @@ async def update_task(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa task (kèm bình luận)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.TASK_NOT_FOUND, TASK_404),
+        **forbidden(),
+    },
 )
 async def delete_task(access: TaskEditor, service: TaskServiceDep) -> None:
     await service.delete_task(access.task)
