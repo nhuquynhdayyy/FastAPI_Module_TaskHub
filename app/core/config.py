@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    SEED_ADMIN_PASSWORD: str | None = None
+
     @property
     def ACCESS_TOKEN_EXPIRE_DELTA(self) -> timedelta:
         return timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
