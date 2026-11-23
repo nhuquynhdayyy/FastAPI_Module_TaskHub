@@ -145,3 +145,8 @@ async def test_list_comments_only_returns_that_tasks_comments(world):
     await add_comment(world, t2["id"], content="của t2")
     body = (await list_comments(world, t1["id"])).json()
     assert [c["content"] for c in body["items"]] == ["của t1"]
+
+
+async def test_list_comments_of_missing_task_returns_404(world):
+    resp = await list_comments(world, 999999)
+    assert resp.status_code == 404
