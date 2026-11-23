@@ -17,7 +17,12 @@ app/
 ├── db/                 # Engine, session
 └── dependencies.py     # Xác thực + phân quyền (workspace, project, task, comment)
 migrations/             # Alembic migrations
+scripts/                # seed.py (dữ liệu mẫu), entrypoint.sh (migrate rồi chạy app trong Docker)
 tests/                  # pytest
+Dockerfile              # Image app (nhiều tầng, chạy bằng user thường)
+docker-compose.yml      # App + PostgreSQL + Redis
+requirements.txt        # Thư viện chạy app (Docker chỉ cài file này)
+requirements-dev.txt    # requirements.txt + thư viện test
 ```
 
 ## Cài đặt
@@ -27,8 +32,10 @@ tests/                  # pytest
 ```bash
 python -m venv venv
 venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements.txt` chỉ có thư viện chạy app. `requirements-dev.txt` gồm `requirements.txt` và thêm pytest cùng các thư viện test.
 
 ### 2. Chạy PostgreSQL bằng Docker
 
@@ -45,12 +52,16 @@ docker exec -it taskhub-redis redis-cli ping
 
 ### 4. Cấu hình biến môi trường
 
-Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. `SECRET_KEY` cần tối thiểu 32 ký tự. Các biến liên quan Redis:
+Sao chép `.env.example` thành `.env` rồi chỉnh giá trị. `SECRET_KEY` cần tối thiểu 32 ký tự. Một số biến quan trọng:
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
+| `ENVIRONMENT` | (bắt buộc) | `dev`, `test` hoặc `prod`. Khi là `prod`, `/docs`, `/redoc`, `/openapi.json` bị tắt và `scripts/seed.py` bị chặn |
 | `REDIS_URL` | (bắt buộc) | Địa chỉ Redis, ví dụ `redis://localhost:6379/0`. Thiếu thì app báo lỗi ngay khi khởi động |
 | `CACHE_TTL_SECONDS` | `60` | Thời gian sống của cache, phải lớn hơn 0 |
+| `SEED_ADMIN_PASSWORD` | (không bắt buộc) | Mật khẩu tài khoản ADMIN do `scripts/seed.py` tạo. Chỉ cần khi chạy seed, thiếu thì seed báo lỗi |
+
+Khi chạy bằng Docker Compose cần thêm `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`.
 
 ### 5. Tạo bảng (migration)
 
@@ -60,9 +71,13 @@ alembic upgrade head
 
 ### 6. Tạo dữ liệu mẫu (user, workspace, project)
 
+Đặt `SEED_ADMIN_PASSWORD` trong `.env` trước, rồi chạy:
+
 ```bash
 python -m scripts.seed
 ```
+
+Script tạo tài khoản ADMIN `seed@example.com` với mật khẩu lấy từ `SEED_ADMIN_PASSWORD`, cùng một workspace và một project mẫu. Script không chạy khi `ENVIRONMENT=prod`. Nếu `seed@example.com` đã tồn tại thì script không đổi mật khẩu; riêng trường hợp email này không phải ADMIN đang hoạt động thì script báo lỗi và thoát.
 
 Script in ra `user id` và `project id` của dữ liệu mẫu. Dùng `project id` này khi gọi các route dạng `/api/v1/projects/{project_id}/...`. Không cần ghi vào `.env`.
 
@@ -74,6 +89,38 @@ uvicorn app.main:app --reload
 
 - Swagger UI: http://127.0.0.1:8000/docs
 - Health check: http://127.0.0.1:8000/health
+
+## Chạy bằng Docker Compose
+
+Chạy cả app, PostgreSQL và Redis bằng một lệnh, không cần cài Python hay làm các bước 1 đến 7 ở trên.
+
+1. Tạo `.env` từ mẫu và điền giá trị thật:
+
+   ```bash
+   copy .env.example .env
+   ```
+
+   Cần đặt `SECRET_KEY` (tối thiểu 32 ký tự) và `POSTGRES_PASSWORD` (chỉ dùng chữ và số, vì mật khẩu được ghép vào `DATABASE_URL`). Muốn nạp dữ liệu mẫu thì đặt thêm `SEED_ADMIN_PASSWORD`. Sinh khóa: `python -c "import secrets; print(secrets.token_hex(32))"`
+
+2. Chạy toàn bộ. Container tự chạy migration rồi mới khởi động app (`scripts/entrypoint.sh`):
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. Nạp dữ liệu mẫu (tùy chọn, cần `SEED_ADMIN_PASSWORD` và `ENVIRONMENT` khác `prod`). Tài khoản mẫu: `seed@example.com`, mật khẩu là giá trị `SEED_ADMIN_PASSWORD`:
+
+   ```bash
+   docker compose exec app python -m scripts.seed
+   ```
+
+   Hoặc tự đăng ký bằng `POST /api/v1/auth/register`.
+
+4. Mở http://127.0.0.1:8000/docs
+
+Khi chạy thật, đặt `ENVIRONMENT=prod`: lúc đó `/docs`, `/redoc`, `/openapi.json` bị tắt và seed bị chặn.
+
+Dừng: `docker compose down` (giữ dữ liệu) hoặc `docker compose down -v` (xóa cả dữ liệu DB).
 
 ## Authentication
 
@@ -251,5 +298,3 @@ Tạo migration mới sau khi đổi model:
 ```bash
 alembic revision --autogenerate -m "mô tả ngắn"
 ```
-
-Luôn mở file sinh ra để kiểm tra trước khi chạy `upgrade`.
