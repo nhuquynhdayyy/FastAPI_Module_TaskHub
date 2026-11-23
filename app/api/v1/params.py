@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import Query, Depends
 from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -13,9 +13,3 @@ def get_pagination(
 
 
 PaginationDep = Annotated[Pagination, Depends(get_pagination)]
-
-PROTECTED_RESPONSES: dict[int | str, dict[str, Any]] = {
-    401: {"description": "Chưa đăng nhập hoặc token không hợp lệ"},
-    403: {"description": "Không đủ quyền trong workspace"},
-    404: {"description": "Không tìm thấy tài nguyên"},
-}
