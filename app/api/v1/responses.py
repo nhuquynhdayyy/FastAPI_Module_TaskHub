@@ -5,10 +5,10 @@ from fastapi import status
 from app.core import messages
 from app.schemas.error import ErrorResponse
 
+ErrorSpec = dict[int | str, dict[str, Any]]
 
-def _error(
-    status_code: int, description: str, example: str
-) -> dict[int | str, dict[str, Any]]:
+
+def _error(status_code: int, description: str, example: str) -> ErrorSpec:
     return {
         status_code: {
             "model": ErrorResponse,
@@ -18,17 +18,43 @@ def _error(
     }
 
 
-UNAUTHORIZED = _error(
-    status.HTTP_401_UNAUTHORIZED,
-    "Chưa đăng nhập, token sai hoặc hết hạn",
-    messages.UNAUTHORIZED,
-)
-FORBIDDEN = _error(status.HTTP_403_FORBIDDEN, "Không đủ quyền", messages.FORBIDDEN)
-NOT_FOUND = _error(
-    status.HTTP_404_NOT_FOUND,
-    "Không tồn tại, hoặc người dùng không thuộc workspace",
-    messages.NOT_FOUND,
-)
-CONFLICT = _error(
-    status.HTTP_409_CONFLICT, "Dữ liệu bị trùng hoặc xung đột", messages.CONFLICT
-)
+def unauthorized(
+    example: str = messages.UNAUTHORIZED,
+    description: str = "Chưa đăng nhập, token sai hoặc hết hạn",
+) -> ErrorSpec:
+    return _error(status.HTTP_401_UNAUTHORIZED, description, example)
+
+
+def bad_request(
+    example: str = messages.BAD_REQUEST,
+    description: str = "Yêu cầu không hợp lệ",
+) -> ErrorSpec:
+    return _error(status.HTTP_400_BAD_REQUEST, description, example)
+
+
+def forbidden(
+    example: str = messages.FORBIDDEN,
+    description: str = "Không đủ quyền",
+) -> ErrorSpec:
+    return _error(status.HTTP_403_FORBIDDEN, description, example)
+
+
+def not_found(
+    example: str = messages.NOT_FOUND,
+    description: str = "Không tồn tại, hoặc người dùng không thuộc workspace",
+) -> ErrorSpec:
+    return _error(status.HTTP_404_NOT_FOUND, description, example)
+
+
+def conflict(
+    example: str = messages.CONFLICT,
+    description: str = "Dữ liệu bị trùng hoặc xung đột",
+) -> ErrorSpec:
+    return _error(status.HTTP_409_CONFLICT, description, example)
+
+
+UNAUTHORIZED = unauthorized()
+BAD_REQUEST = bad_request()
+FORBIDDEN = forbidden()
+NOT_FOUND = not_found()
+CONFLICT = conflict()
