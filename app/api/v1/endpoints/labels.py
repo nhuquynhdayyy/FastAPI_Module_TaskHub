@@ -2,8 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, status
 
-from app.api.v1.responses import FORBIDDEN, NOT_FOUND
+from app.api.v1.params import PaginationDep
+from app.api.v1.responses import conflict, forbidden, not_found
+from app.core import messages
 from app.dependencies import ProjectEditor, ProjectViewer, TaskEditor
+from app.schemas.common import Page
 from app.schemas.label import LabelCreate, LabelResponse, LabelUpdate
 from app.schemas.task import TaskResponse
 from app.services.label import LabelService, get_label_service
@@ -15,9 +18,16 @@ task_router = APIRouter()
 LabelServiceDep = Annotated[LabelService, Depends(get_label_service)]
 LabelId = Annotated[int, Path(ge=1)]
 
-NAME_EXISTS = {
-    status.HTTP_409_CONFLICT: {"description": "Tên label đã tồn tại trong project"}
-}
+PROJECT_404 = "Project không tồn tại, hoặc người dùng không thuộc workspace"
+LABEL_404 = (
+    "Project không tồn tại hoặc không có quyền truy cập; "
+    f"hoặc label không tồn tại (`{messages.LABEL_NOT_FOUND}`)"
+)
+TASK_LABEL_404 = (
+    "Task không tồn tại hoặc không có quyền truy cập; "
+    f"hoặc label không tồn tại (`{messages.LABEL_NOT_FOUND}`)"
+)
+NAME_EXISTS = "Tên label đã tồn tại trong project"
 
 
 @project_router.post(
@@ -25,7 +35,11 @@ NAME_EXISTS = {
     response_model=LabelResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Tạo label",
-    responses={**NOT_FOUND, **FORBIDDEN, **NAME_EXISTS},
+    responses={
+        **not_found(messages.PROJECT_NOT_FOUND, PROJECT_404),
+        **forbidden(),
+        **conflict(messages.LABEL_NAME_EXISTS, NAME_EXISTS),
+    },
 )
 async def create_label(
     data: LabelCreate, access: ProjectEditor, service: LabelServiceDep
@@ -36,22 +50,24 @@ async def create_label(
 
 @project_router.get(
     "",
-    response_model=list[LabelResponse],
-    summary="Danh sách label của project",
-    responses={**NOT_FOUND},
+    response_model=Page[LabelResponse],
+    summary="Danh sách label của project (phân trang)",
+    responses={**not_found(messages.PROJECT_NOT_FOUND, PROJECT_404)},
 )
 async def list_labels(
-    access: ProjectViewer, service: LabelServiceDep
-) -> list[LabelResponse]:
-    labels = await service.list_labels(access.project.id)
-    return [LabelResponse.model_validate(label) for label in labels]
+    access: ProjectViewer, service: LabelServiceDep, pagination: PaginationDep
+) -> Page[LabelResponse]:
+    labels, total = await service.list_labels(access.project.id, pagination)
+    return Page[LabelResponse].build(
+        [LabelResponse.model_validate(label) for label in labels], total, pagination
+    )
 
 
 @project_router.get(
     "/{label_id}",
     response_model=LabelResponse,
     summary="Chi tiết label",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.LABEL_NOT_FOUND, LABEL_404)},
 )
 async def get_label(
     label_id: LabelId, access: ProjectViewer, service: LabelServiceDep
@@ -64,7 +80,11 @@ async def get_label(
     "/{label_id}",
     response_model=LabelResponse,
     summary="Sửa label",
-    responses={**NOT_FOUND, **FORBIDDEN, **NAME_EXISTS},
+    responses={
+        **not_found(messages.LABEL_NOT_FOUND, LABEL_404),
+        **forbidden(),
+        **conflict(messages.LABEL_NAME_EXISTS, NAME_EXISTS),
+    },
 )
 async def update_label(
     label_id: LabelId,
@@ -80,7 +100,10 @@ async def update_label(
     "/{label_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa label",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.LABEL_NOT_FOUND, LABEL_404),
+        **forbidden(),
+    },
 )
 async def delete_label(
     label_id: LabelId, access: ProjectEditor, service: LabelServiceDep
@@ -93,11 +116,13 @@ async def delete_label(
     response_model=TaskResponse,
     summary="Gán label cho task",
     responses={
-        **NOT_FOUND,
-        **FORBIDDEN,
-        status.HTTP_409_CONFLICT: {
-            "description": "Label đã được gán cho task, hoặc project đã ARCHIVED"
-        },
+        **not_found(messages.LABEL_NOT_FOUND, TASK_LABEL_404),
+        **forbidden(),
+        **conflict(
+            messages.LABEL_ALREADY_ASSIGNED,
+            "Label đã được gán cho task, hoặc project đã ARCHIVED "
+            f"(`{messages.PROJECT_ARCHIVED}`)",
+        ),
     },
 )
 async def assign_label(
@@ -112,9 +137,14 @@ async def assign_label(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Bỏ label khỏi task",
     responses={
-        **NOT_FOUND,
-        **FORBIDDEN,
-        status.HTTP_409_CONFLICT: {"description": "Project đã ARCHIVED"},
+        **not_found(
+            messages.LABEL_NOT_ASSIGNED,
+            "Task không tồn tại hoặc không có quyền truy cập; hoặc label không "
+            f"tồn tại (`{messages.LABEL_NOT_FOUND}`); hoặc label chưa được gán cho "
+            "task",
+        ),
+        **forbidden(),
+        **conflict(messages.PROJECT_ARCHIVED, "Project đã ARCHIVED"),
     },
 )
 async def remove_label(

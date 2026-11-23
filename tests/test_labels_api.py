@@ -1,3 +1,5 @@
+from app.core.constants import MAX_PAGE_SIZE
+
 API = "/api/v1"
 
 
@@ -30,7 +32,9 @@ async def test_editor_creates_label_viewer_lists_it(world):
     await make_label(world, color="#FF0000")
     resp = await world["client"].get(labels_url(world), headers=world["viewer"])
     assert resp.status_code == 200
-    assert [(lb["name"], lb["color"]) for lb in resp.json()] == [("bug", "#FF0000")]
+    assert [(lb["name"], lb["color"]) for lb in resp.json()["items"]] == [
+        ("bug", "#FF0000")
+    ]
 
 
 async def test_viewer_cannot_create_label(world):
@@ -167,3 +171,36 @@ async def test_archived_project_blocks_assign(world):
         f"{API}/tasks/{task['id']}/labels/{label['id']}", headers=world["editor"]
     )
     assert resp.status_code == 409
+
+
+async def test_list_labels_has_total_and_pagination(world):
+    for name in ("a", "b", "c"):
+        await make_label(world, name)
+    resp = await world["client"].get(
+        labels_url(world), params={"page": 2, "limit": 2}, headers=world["viewer"]
+    )
+    body = resp.json()
+    assert resp.status_code == 200
+    assert (body["total"], body["page"], body["limit"]) == (3, 2, 2)
+    assert [lb["name"] for lb in body["items"]] == ["c"]
+
+
+async def test_list_labels_limit_above_max_returns_422(world):
+    resp = await world["client"].get(
+        labels_url(world),
+        params={"limit": MAX_PAGE_SIZE + 1},
+        headers=world["viewer"],
+    )
+    assert resp.status_code == 422
+
+
+async def test_list_labels_page_beyond_last_returns_empty_items_with_total(world):
+    for name in ("a", "b", "c"):
+        await make_label(world, name)
+    resp = await world["client"].get(
+        labels_url(world), params={"page": 99, "limit": 2}, headers=world["viewer"]
+    )
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["items"] == []
+    assert (body["total"], body["page"], body["limit"]) == (3, 99, 2)

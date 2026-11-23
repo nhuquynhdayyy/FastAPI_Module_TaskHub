@@ -68,7 +68,7 @@ alembic upgrade head
 python -m scripts.seed
 ```
 
-Script in ra `User id` và `Project id` của dữ liệu mẫu, dùng khi thử API (không cần ghi vào `.env`).
+Script in ra `user id` và `project id` của dữ liệu mẫu. Dùng `project id` này khi gọi các route dạng `/api/v1/projects/{project_id}/...`. Không cần ghi vào `.env`.
 
 ### 7. Chạy ứng dụng
 
