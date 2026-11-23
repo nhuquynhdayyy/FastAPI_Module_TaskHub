@@ -33,7 +33,7 @@ def bad_request(
 
 
 def forbidden(
-    example: str = messages.FORBIDDEN,
+    example: str = messages.INSUFFICIENT_PERMISSION,
     description: str = "Không đủ quyền",
 ) -> ErrorSpec:
     return _error(status.HTTP_403_FORBIDDEN, description, example)
@@ -54,7 +54,3 @@ def conflict(
 
 
 UNAUTHORIZED = unauthorized()
-BAD_REQUEST = bad_request()
-FORBIDDEN = forbidden()
-NOT_FOUND = not_found()
-CONFLICT = conflict()

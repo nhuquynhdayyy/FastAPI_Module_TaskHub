@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 
 from app.api.v1.params import PaginationDep
-from app.api.v1.responses import FORBIDDEN, NOT_FOUND
+from app.api.v1.responses import conflict, forbidden, not_found
+from app.core import messages
 from app.dependencies import CurrentUser, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
 from app.schemas.workspace import (
@@ -53,7 +54,7 @@ async def list_my_workspaces(
     "/{workspace_id}",
     response_model=WorkspaceResponse,
     summary="Chi tiết workspace",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.WORKSPACE_NOT_FOUND)},
 )
 async def get_workspace(access: WorkspaceViewer) -> WorkspaceResponse:
     return WorkspaceResponse.model_validate(access.workspace)
@@ -63,7 +64,10 @@ async def get_workspace(access: WorkspaceViewer) -> WorkspaceResponse:
     "/{workspace_id}",
     response_model=WorkspaceResponse,
     summary="Cập nhật workspace (chỉ owner)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.WORKSPACE_NOT_FOUND),
+        **forbidden(),
+    },
 )
 async def update_workspace(
     data: WorkspaceUpdate, access: WorkspaceOwner, service: WorkspaceServiceDep
@@ -76,7 +80,10 @@ async def update_workspace(
     "/{workspace_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa workspace (chỉ owner)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.WORKSPACE_NOT_FOUND),
+        **forbidden(),
+    },
 )
 async def delete_workspace(
     access: WorkspaceOwner, service: WorkspaceServiceDep
@@ -88,7 +95,7 @@ async def delete_workspace(
     "/{workspace_id}/members",
     response_model=list[MemberResponse],
     summary="Danh sách thành viên",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.WORKSPACE_NOT_FOUND)},
 )
 async def list_members(
     access: WorkspaceViewer, service: WorkspaceServiceDep
@@ -102,7 +109,15 @@ async def list_members(
     response_model=MemberResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Thêm thành viên (chỉ owner)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(
+            messages.WORKSPACE_NOT_FOUND,
+            "Workspace không tồn tại hoặc người dùng không thuộc workspace; "
+            f"hoặc người được thêm không tồn tại (`{messages.USER_NOT_FOUND}`)",
+        ),
+        **forbidden(),
+        **conflict(messages.ALREADY_MEMBER, "Người dùng đã là thành viên workspace"),
+    },
 )
 async def add_member(
     data: MemberAdd, access: WorkspaceOwner, service: WorkspaceServiceDep
@@ -115,7 +130,23 @@ async def add_member(
     "/{workspace_id}/members/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa thành viên (chỉ owner)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    description=(
+        "Lỗi 403 có hai nghĩa, phân biệt bằng `detail`: "
+        f"người gọi không phải owner (`{messages.INSUFFICIENT_PERMISSION}`), "
+        f"hoặc đang xóa chính owner của workspace (`{messages.CANNOT_REMOVE_OWNER}`)."
+    ),
+    responses={
+        **not_found(
+            messages.WORKSPACE_NOT_FOUND,
+            "Workspace không tồn tại hoặc người dùng không thuộc workspace; "
+            f"hoặc thành viên cần xóa không có trong workspace "
+            f"(`{messages.MEMBER_NOT_FOUND}`)",
+        ),
+        **forbidden(
+            messages.CANNOT_REMOVE_OWNER,
+            "Không phải owner, hoặc xóa owner của workspace",
+        ),
+    },
 )
 async def remove_member(
     user_id: Annotated[int, Path(ge=1)],

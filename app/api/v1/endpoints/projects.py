@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 
 from app.api.v1.params import PaginationDep
-from app.api.v1.responses import FORBIDDEN, NOT_FOUND
+from app.api.v1.responses import forbidden, not_found
+from app.core import messages
 from app.core.enums import ProjectStatus
 from app.dependencies import WorkspaceEditor, WorkspaceOwner, WorkspaceViewer
 from app.schemas.common import Page
@@ -15,13 +16,21 @@ router = APIRouter()
 ProjectServiceDep = Annotated[ProjectService, Depends(get_project_service)]
 ProjectId = Annotated[int, Path(ge=1)]
 
+PROJECT_404 = (
+    "Project không tồn tại; hoặc workspace không tồn tại / người dùng không thuộc "
+    f"workspace (`{messages.WORKSPACE_NOT_FOUND}`)"
+)
+
 
 @router.post(
     "",
     response_model=ProjectResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Tạo project",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.WORKSPACE_NOT_FOUND),
+        **forbidden(),
+    },
 )
 async def create_project(
     data: ProjectCreate, access: WorkspaceEditor, service: ProjectServiceDep
@@ -34,7 +43,7 @@ async def create_project(
     "",
     response_model=Page[ProjectResponse],
     summary="Danh sách project",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.WORKSPACE_NOT_FOUND)},
 )
 async def list_projects(
     access: WorkspaceViewer,
@@ -54,7 +63,7 @@ async def list_projects(
     "/{project_id}",
     response_model=ProjectResponse,
     summary="Chi tiết project",
-    responses={**NOT_FOUND},
+    responses={**not_found(messages.PROJECT_NOT_FOUND, PROJECT_404)},
 )
 async def get_project(
     project_id: ProjectId, access: WorkspaceViewer, service: ProjectServiceDep
@@ -67,7 +76,10 @@ async def get_project(
     "/{project_id}",
     response_model=ProjectResponse,
     summary="Cập nhật project",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.PROJECT_NOT_FOUND, PROJECT_404),
+        **forbidden(),
+    },
 )
 async def update_project(
     project_id: ProjectId,
@@ -83,7 +95,10 @@ async def update_project(
     "/{project_id}/archive",
     response_model=ProjectResponse,
     summary="Lưu trữ project",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.PROJECT_NOT_FOUND, PROJECT_404),
+        **forbidden(),
+    },
 )
 async def archive_project(
     project_id: ProjectId, access: WorkspaceEditor, service: ProjectServiceDep
@@ -96,7 +111,10 @@ async def archive_project(
     "/{project_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Xóa project (chỉ owner)",
-    responses={**NOT_FOUND, **FORBIDDEN},
+    responses={
+        **not_found(messages.PROJECT_NOT_FOUND, PROJECT_404),
+        **forbidden(),
+    },
 )
 async def delete_project(
     project_id: ProjectId, access: WorkspaceOwner, service: ProjectServiceDep
