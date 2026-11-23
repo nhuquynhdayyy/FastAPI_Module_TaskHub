@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.enums import Environment
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import register_middleware
@@ -36,6 +37,14 @@ tags_metadata = [
     {"name": "System", "description": "Kiểm tra tình trạng dịch vụ."},
 ]
 
+
+def docs_config(environment: Environment) -> dict[str, None]:
+    """Production không công khai /docs, /redoc, /openapi.json."""
+    if environment == Environment.PROD:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {}
+
+
 app = FastAPI(
     title="TaskHub API",
     summary="API quản lý công việc theo workspace và project.",
@@ -48,6 +57,7 @@ app = FastAPI(
     version="1.0.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
+    **docs_config(settings.ENVIRONMENT),
 )
 
 register_middleware(app)
