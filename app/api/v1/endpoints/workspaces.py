@@ -34,11 +34,8 @@ async def list_my_workspaces(
     pagination: PaginationDep,
 ) -> Page[WorkspaceResponse]:
     workspaces, total = await service.list_workspaces(user, pagination)
-    return Page[WorkspaceResponse](
-        items=[WorkspaceResponse.model_validate(w) for w in workspaces],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+    return Page[WorkspaceResponse].build(
+        [WorkspaceResponse.model_validate(w) for w in workspaces], total, pagination
     )
 
 
