@@ -5,16 +5,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.v1.router import api_router
+from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
-from app.db.session import engine
+from app.core.logging import setup_logging
+from app.core.middleware import register_middleware
 from app.core.redis import redis_client
+from app.db.session import engine
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    setup_logging(settings.LOG_LEVEL)
     logger.info("TaskHub starting up")
     yield
     await redis_client.aclose()
@@ -29,6 +32,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+register_middleware(app)
 register_exception_handlers(app)
 
 app.include_router(api_router, prefix="/api/v1")

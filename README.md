@@ -64,7 +64,7 @@ alembic upgrade head
 python -m scripts.seed
 ```
 
-Ghi hai số in ra (`DEFAULT_USER_ID`, `DEFAULT_PROJECT_ID`) vào file `.env`.
+Script in ra `user id` và `project id` của dữ liệu mẫu. Dùng `project id` này khi gọi các route dạng `/api/v1/projects/{project_id}/...`. Không cần ghi vào `.env`.
 
 ### 7. Chạy ứng dụng
 
