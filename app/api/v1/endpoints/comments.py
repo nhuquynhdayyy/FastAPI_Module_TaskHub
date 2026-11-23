@@ -19,7 +19,7 @@ CommentServiceDep = Annotated[CommentService, Depends(get_comment_service)]
 @task_router.get(
     "",
     response_model=Page[CommentResponse],
-    summary="Danh sách bình luận của task (phân trang)",
+    summary="Danh sách bình luận của task (phân trang, cũ nhất trước)",
     responses={**NOT_FOUND},
 )
 async def list_comments(
