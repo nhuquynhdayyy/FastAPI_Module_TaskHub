@@ -45,11 +45,8 @@ async def list_projects(
     projects, total = await service.list_projects(
         access.workspace.id, pagination, status
     )
-    return Page[ProjectResponse](
-        items=[ProjectResponse.model_validate(p) for p in projects],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+    return Page[ProjectResponse].build(
+        [ProjectResponse.model_validate(p) for p in projects], total, pagination
     )
 
 

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 class UserRole(str, Enum):
@@ -29,3 +29,16 @@ class TaskPriority(str, Enum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     URGENT = "URGENT"
+
+
+class Environment(StrEnum):
+    DEV = "dev"
+    TEST = "test"
+    PROD = "prod"
+
+
+class LogLevel(StrEnum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"

@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from app.core import messages
+
+logger = logging.getLogger(__name__)
 
 
 class AppException(Exception):
@@ -46,6 +50,13 @@ class ConflictException(AppException):
     default_detail = messages.CONFLICT
 
 
+def internal_error_response(request_id: str | None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": messages.INTERNAL_ERROR, "request_id": request_id},
+    )
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
@@ -54,5 +65,13 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     )
 
 
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled error on %s %s", request.method, request.url.path, exc_info=exc
+    )
+    return internal_error_response(getattr(request.state, "request_id", None))
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppException, app_exception_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
