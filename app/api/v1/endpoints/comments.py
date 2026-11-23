@@ -26,11 +26,8 @@ async def list_comments(
     access: TaskViewer, service: CommentServiceDep, pagination: PaginationDep
 ) -> Page[CommentResponse]:
     comments, total = await service.list_comments(access.task.id, pagination)
-    return Page[CommentResponse](
-        items=[CommentResponse.model_validate(c) for c in comments],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+    return Page[CommentResponse].build(
+        [CommentResponse.model_validate(c) for c in comments], total, pagination
     )
 
 

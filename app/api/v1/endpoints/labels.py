@@ -46,11 +46,8 @@ async def list_labels(
     access: ProjectViewer, service: LabelServiceDep, pagination: PaginationDep
 ) -> Page[LabelResponse]:
     labels, total = await service.list_labels(access.project.id, pagination)
-    return Page[LabelResponse](
-        items=[LabelResponse.model_validate(label) for label in labels],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+    return Page[LabelResponse].build(
+        [LabelResponse.model_validate(label) for label in labels], total, pagination
     )
 
 
