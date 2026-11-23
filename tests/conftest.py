@@ -7,11 +7,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("SECRET_KEY", "test-secret-key-test-secret-key-0123456789")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-
-import app.models
 from app.core.redis import get_redis
 from app.db.session import get_db
 from app.main import app
