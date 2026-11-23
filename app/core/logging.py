@@ -2,6 +2,8 @@ import logging
 import sys
 from contextvars import ContextVar
 
+from app.core.enums import LogLevel
+
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 
@@ -11,7 +13,7 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
-def setup_logging(level: str = "INFO") -> None:
+def setup_logging(level: LogLevel) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.addFilter(RequestIdFilter())
     handler.setFormatter(
@@ -21,5 +23,5 @@ def setup_logging(level: str = "INFO") -> None:
     )
     root = logging.getLogger()
     root.handlers[:] = [handler]
-    root.setLevel(level)
+    root.setLevel(level.value)
     logging.getLogger("uvicorn.access").disabled = True

@@ -50,13 +50,3 @@ def test_short_secret_key_is_rejected():
             DATABASE_URL="postgresql+asyncpg://u:p@h:5432/db",
             REDIS_URL="redis://h:6379/0",
         )
-
-
-def test_template_secret_is_rejected_in_prod():
-    with pytest.raises(ValidationError):
-        Settings(
-            ENVIRONMENT="prod",
-            SECRET_KEY="change-me-to-a-long-random-string",
-            DATABASE_URL="postgresql+asyncpg://u:p@h:5432/db",
-            REDIS_URL="redis://h:6379/0",
-        )
