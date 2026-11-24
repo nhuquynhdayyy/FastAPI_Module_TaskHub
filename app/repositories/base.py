@@ -3,8 +3,8 @@ from typing import Any, Generic, TypeVar
 from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.base import Base
 from app.core.pagination import Pagination
+from app.models.base import Base
 
 ModelT = TypeVar("ModelT", bound=Base)
 

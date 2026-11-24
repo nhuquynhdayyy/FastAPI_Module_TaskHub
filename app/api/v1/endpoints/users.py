@@ -1,5 +1,7 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, status
+
 from app.api.v1.responses import bad_request
 from app.core import messages
 from app.dependencies import CurrentUser

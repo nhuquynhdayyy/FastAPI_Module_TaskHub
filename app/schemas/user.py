@@ -1,15 +1,17 @@
-from pydantic import ConfigDict, EmailStr, Field, AfterValidator
 from datetime import datetime
-from app.core.enums import UserRole
+from typing import Annotated
+
+from pydantic import AfterValidator, ConfigDict, EmailStr, Field
+
+from app.core import messages
 from app.core.constants import (
     FULL_NAME_MAX_LENGTH,
     FULL_NAME_MIN_LENGTH,
     PASSWORD_MAX_BYTES,
     PASSWORD_MIN_LENGTH,
 )
+from app.core.enums import UserRole
 from app.schemas.base import AppBaseModel
-from typing import Annotated
-from app.core import messages
 
 
 def _check_password_bytes(value: str) -> str:

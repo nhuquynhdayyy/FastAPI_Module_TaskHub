@@ -1,16 +1,14 @@
-from typing import Annotated
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
 from app.core.enums import ProjectStatus
 from app.core.exceptions import NotFoundException
+from app.core.pagination import Pagination
 from app.db.session import DBSession
 from app.models import Project
 from app.repositories.project import ProjectRepository
 from app.schemas.project import ProjectCreate, ProjectUpdate
-from app.core.pagination import Pagination
 
 
 class ProjectService:

@@ -1,10 +1,9 @@
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import TaskPriority, TaskStatus
-from app.models import Task, Project
-from app.repositories.base import BaseRepository
 from app.core.pagination import Pagination
+from app.models import Project, Task
+from app.repositories.base import BaseRepository
 from app.schemas.task import TaskFilter
 
 

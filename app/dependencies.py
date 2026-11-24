@@ -16,12 +16,12 @@ from app.core.exceptions import (
 from app.core.permissions import has_at_least
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
-from app.models import Project, Task, User, Workspace, Comment
+from app.models import Comment, Project, Task, User, Workspace
+from app.repositories.comment import CommentRepository
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
-from app.repositories.comment import CommentRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 

@@ -2,8 +2,8 @@ from datetime import datetime
 
 from pydantic import ConfigDict, EmailStr, Field, field_validator
 
-from app.core.constants import NAME_MAX_LENGTH, NAME_MIN_LENGTH
 from app.core import messages
+from app.core.constants import NAME_MAX_LENGTH, NAME_MIN_LENGTH
 from app.core.enums import WorkspaceRole
 from app.schemas.base import AppBaseModel, UpdateModel
 
