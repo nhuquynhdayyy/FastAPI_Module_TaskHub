@@ -103,6 +103,26 @@ class ProjectAccess:
     role: WorkspaceRole
 
 
+class _ProjectChildAccess:
+    parent: ProjectAccess
+
+    @property
+    def project(self) -> Project:
+        return self.parent.project
+
+    @property
+    def workspace(self) -> Workspace:
+        return self.parent.workspace
+
+    @property
+    def user(self) -> User:
+        return self.parent.user
+
+    @property
+    def role(self) -> WorkspaceRole:
+        return self.parent.role
+
+
 def require_project_role(
     minimum: WorkspaceRole,
 ) -> Callable[..., Awaitable[ProjectAccess]]:
@@ -122,25 +142,9 @@ def require_project_role(
 
 
 @dataclass
-class TaskAccess:
+class TaskAccess(_ProjectChildAccess):
     task: Task
     parent: ProjectAccess
-
-    @property
-    def project(self) -> Project:
-        return self.parent.project
-
-    @property
-    def workspace(self) -> Workspace:
-        return self.parent.workspace
-
-    @property
-    def user(self) -> User:
-        return self.parent.user
-
-    @property
-    def role(self) -> WorkspaceRole:
-        return self.parent.role
 
 
 def require_task_role(
@@ -164,26 +168,10 @@ def require_task_role(
 
 
 @dataclass
-class CommentAccess:
+class CommentAccess(_ProjectChildAccess):
     comment: Comment
     task: Task
     parent: ProjectAccess
-
-    @property
-    def project(self) -> Project:
-        return self.parent.project
-
-    @property
-    def workspace(self) -> Workspace:
-        return self.parent.workspace
-
-    @property
-    def user(self) -> User:
-        return self.parent.user
-
-    @property
-    def role(self) -> WorkspaceRole:
-        return self.parent.role
 
 
 async def _project_access(
