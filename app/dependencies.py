@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -81,7 +82,9 @@ async def resolve_workspace_access(
     return WorkspaceAccess(workspace=workspace, user=user, role=role)
 
 
-def require_workspace_role(minimum: WorkspaceRole):
+def require_workspace_role(
+    minimum: WorkspaceRole,
+) -> Callable[..., Awaitable[WorkspaceAccess]]:
     async def dependency(
         workspace_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
@@ -100,7 +103,9 @@ class ProjectAccess:
     role: WorkspaceRole
 
 
-def require_project_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+def require_project_role(
+    minimum: WorkspaceRole,
+) -> Callable[..., Awaitable[ProjectAccess]]:
     async def dependency(
         project_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
@@ -138,7 +143,9 @@ class TaskAccess:
         return self.parent.role
 
 
-def require_task_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+def require_task_role(
+    minimum: WorkspaceRole,
+) -> Callable[..., Awaitable[TaskAccess]]:
     async def dependency(
         task_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
@@ -194,7 +201,9 @@ async def _project_access(
     )
 
 
-def require_comment_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def]
+def require_comment_role(
+    minimum: WorkspaceRole,
+) -> Callable[..., Awaitable[CommentAccess]]:
     async def dependency(
         comment_id: Annotated[int, Path(ge=1)],
         user: CurrentUser,
