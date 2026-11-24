@@ -212,16 +212,18 @@ def require_comment_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def
     return dependency
 
 
-V, E, O = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
+VIEWER = WorkspaceRole.VIEWER
+EDITOR = WorkspaceRole.EDITOR
+OWNER = WorkspaceRole.OWNER
 
-WorkspaceViewer = Annotated[WorkspaceAccess, Depends(require_workspace_role(V))]
-WorkspaceEditor = Annotated[WorkspaceAccess, Depends(require_workspace_role(E))]
-WorkspaceOwner = Annotated[WorkspaceAccess, Depends(require_workspace_role(O))]
+WorkspaceViewer = Annotated[WorkspaceAccess, Depends(require_workspace_role(VIEWER))]
+WorkspaceEditor = Annotated[WorkspaceAccess, Depends(require_workspace_role(EDITOR))]
+WorkspaceOwner = Annotated[WorkspaceAccess, Depends(require_workspace_role(OWNER))]
 
-ProjectViewer = Annotated[ProjectAccess, Depends(require_project_role(V))]
-ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(E))]
+ProjectViewer = Annotated[ProjectAccess, Depends(require_project_role(VIEWER))]
+ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(EDITOR))]
 
-TaskViewer = Annotated[TaskAccess, Depends(require_task_role(V))]
-TaskEditor = Annotated[TaskAccess, Depends(require_task_role(E))]
+TaskViewer = Annotated[TaskAccess, Depends(require_task_role(VIEWER))]
+TaskEditor = Annotated[TaskAccess, Depends(require_task_role(EDITOR))]
 
-CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(V))]
+CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(VIEWER))]

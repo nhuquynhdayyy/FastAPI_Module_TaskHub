@@ -13,7 +13,7 @@ from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 
-V, E, O = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
+VIEWER, EDITOR, OWNER = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
 
 
 @pytest.fixture
@@ -33,8 +33,8 @@ async def setup(session):
     admin = await make("admin@gmail.com", UserRole.ADMIN)
 
     ws = await workspaces.create_with_owner("Perm WS", owner.id)
-    await workspaces.add_member(ws.id, editor.id, E)
-    await workspaces.add_member(ws.id, viewer.id, V)
+    await workspaces.add_member(ws.id, editor.id, EDITOR)
+    await workspaces.add_member(ws.id, viewer.id, VIEWER)
 
     project = await ProjectRepository(session).create(
         workspace_id=ws.id, name="Project 1"
@@ -72,103 +72,103 @@ async def setup(session):
 
 async def test_outsider_gets_not_found(setup):
     with pytest.raises(NotFoundException):
-        await setup["check"](V, setup["outsider"])
+        await setup["check"](VIEWER, setup["outsider"])
 
 
 async def test_viewer_can_view(setup):
-    access = await setup["check"](V, setup["viewer"])
-    assert access.role == V
+    access = await setup["check"](VIEWER, setup["viewer"])
+    assert access.role == VIEWER
 
 
 async def test_viewer_cannot_edit(setup):
     with pytest.raises(ForbiddenException):
-        await setup["check"](E, setup["viewer"])
+        await setup["check"](EDITOR, setup["viewer"])
 
 
 async def test_editor_can_edit(setup):
-    access = await setup["check"](E, setup["editor"])
-    assert access.role == E
+    access = await setup["check"](EDITOR, setup["editor"])
+    assert access.role == EDITOR
 
 
 async def test_editor_cannot_own(setup):
     with pytest.raises(ForbiddenException):
-        await setup["check"](O, setup["editor"])
+        await setup["check"](OWNER, setup["editor"])
 
 
 async def test_owner_can_own(setup):
-    access = await setup["check"](O, setup["owner"])
-    assert access.role == O
+    access = await setup["check"](OWNER, setup["owner"])
+    assert access.role == OWNER
 
 
 async def test_admin_non_member_gets_owner_role(setup):
-    access = await setup["check"](O, setup["admin"])
-    assert access.role == O
+    access = await setup["check"](OWNER, setup["admin"])
+    assert access.role == OWNER
 
 
 async def test_missing_workspace_gets_not_found(setup):
     with pytest.raises(NotFoundException):
-        await setup["check"](V, setup["owner"], 999999)
+        await setup["check"](VIEWER, setup["owner"], 999999)
 
 
 async def test_project_viewer_can_view(setup):
-    access = await setup["check_project"](V, setup["viewer"])
-    assert access.role == V
+    access = await setup["check_project"](VIEWER, setup["viewer"])
+    assert access.role == VIEWER
     assert access.project.id == setup["project"].id
     assert access.workspace.id == setup["ws"].id
 
 
 async def test_project_viewer_cannot_edit(setup):
     with pytest.raises(ForbiddenException):
-        await setup["check_project"](E, setup["viewer"])
+        await setup["check_project"](EDITOR, setup["viewer"])
 
 
 async def test_project_editor_can_edit(setup):
-    access = await setup["check_project"](E, setup["editor"])
-    assert access.role == E
+    access = await setup["check_project"](EDITOR, setup["editor"])
+    assert access.role == EDITOR
 
 
 async def test_project_admin_non_member_gets_owner_role(setup):
-    access = await setup["check_project"](O, setup["admin"])
-    assert access.role == O
+    access = await setup["check_project"](OWNER, setup["admin"])
+    assert access.role == OWNER
 
 
 async def test_project_outsider_and_missing_look_identical(setup):
     with pytest.raises(NotFoundException) as outsider_exc:
-        await setup["check_project"](V, setup["outsider"])
+        await setup["check_project"](VIEWER, setup["outsider"])
     with pytest.raises(NotFoundException) as missing_exc:
-        await setup["check_project"](V, setup["owner"], 999999)
+        await setup["check_project"](VIEWER, setup["owner"], 999999)
 
     assert outsider_exc.value.detail == messages.PROJECT_NOT_FOUND
     assert outsider_exc.value.detail == missing_exc.value.detail
 
 
 async def test_task_viewer_can_view(setup):
-    access = await setup["check_task"](V, setup["viewer"])
-    assert access.role == V
+    access = await setup["check_task"](VIEWER, setup["viewer"])
+    assert access.role == VIEWER
     assert access.task.id == setup["task"].id
     assert access.project.id == setup["project"].id
 
 
 async def test_task_viewer_cannot_edit(setup):
     with pytest.raises(ForbiddenException):
-        await setup["check_task"](E, setup["viewer"])
+        await setup["check_task"](EDITOR, setup["viewer"])
 
 
 async def test_task_editor_cannot_own(setup):
     with pytest.raises(ForbiddenException):
-        await setup["check_task"](O, setup["editor"])
+        await setup["check_task"](OWNER, setup["editor"])
 
 
 async def test_task_owner_can_own(setup):
-    access = await setup["check_task"](O, setup["owner"])
-    assert access.role == O
+    access = await setup["check_task"](OWNER, setup["owner"])
+    assert access.role == OWNER
 
 
 async def test_task_outsider_and_missing_look_identical(setup):
     with pytest.raises(NotFoundException) as outsider_exc:
-        await setup["check_task"](V, setup["outsider"])
+        await setup["check_task"](VIEWER, setup["outsider"])
     with pytest.raises(NotFoundException) as missing_exc:
-        await setup["check_task"](V, setup["owner"], 999999)
+        await setup["check_task"](VIEWER, setup["owner"], 999999)
 
     assert outsider_exc.value.detail == messages.TASK_NOT_FOUND
     assert outsider_exc.value.detail == missing_exc.value.detail

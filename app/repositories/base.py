@@ -29,8 +29,10 @@ class BaseRepository(Generic[ModelT]):
         return list(result.all()), total or 0
 
     async def get_multi(
-        self, pagination: Pagination = Pagination()
+        self, pagination: Pagination | None = None
     ) -> tuple[list[ModelT], int]:
+        if pagination is None:
+            pagination = Pagination()
         stmt = select(self.model).order_by(*inspect(self.model).primary_key)
         return await self.paginate(stmt, pagination)
 
