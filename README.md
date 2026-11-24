@@ -2,7 +2,7 @@
 
 ## Tech stack
 
-FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16 | Redis 7 | pytest
+FastAPI | SQLAlchemy 2.x (async) | Alembic | Pydantic v2 | PostgreSQL 16 | Redis 7 | pytest | Ruff | mypy
 
 ## Cấu trúc project
 
@@ -21,8 +21,9 @@ scripts/                # seed.py (dữ liệu mẫu), entrypoint.sh (migrate r�
 tests/                  # pytest
 Dockerfile              # Image app (nhiều tầng, chạy bằng user thường)
 docker-compose.yml      # App + PostgreSQL + Redis
+pyproject.toml          # Cấu hình Ruff và mypy
 requirements.txt        # Thư viện chạy app (Docker chỉ cài file này)
-requirements-dev.txt    # requirements.txt + thư viện test
+requirements-dev.txt    # requirements.txt + thư viện test và công cụ kiểm tra code
 ```
 
 ## Cài đặt
@@ -35,7 +36,7 @@ venv\Scripts\activate
 pip install -r requirements-dev.txt
 ```
 
-`requirements.txt` chỉ có thư viện chạy app. `requirements-dev.txt` gồm `requirements.txt` và thêm pytest cùng các thư viện test.
+`requirements.txt` chỉ có thư viện chạy app. `requirements-dev.txt` gồm `requirements.txt` và thêm pytest, Ruff, mypy cùng các thư viện hỗ trợ.
 
 ### 2. Chạy PostgreSQL bằng Docker
 
@@ -131,7 +132,7 @@ Dùng JWT với hai loại token:
 | Access token | Ngắn (30 phút) | Gọi các API cần đăng nhập |
 | Refresh token | Dài (7 ngày) | Xin cặp token mới; lưu `jti` trong DB để thu hồi được khi logout |
 
-Mật khẩu được băm bằng bcrypt, không lưu dạng thô.
+Mật khẩu được băm bằng bcrypt, không lưu dạng thô. Việc băm và kiểm tra mật khẩu chạy trong thread riêng (`asyncio.to_thread`) để không chặn event loop.
 
 ## Phân quyền (RBAC)
 
@@ -273,11 +274,23 @@ Khi giao task cho người khác (lúc tạo hoặc sửa), người được gi
 - Email hiện là email giả: hàm `send_email` trong `app/services/email.py` chỉ ghi log. Thay bằng SMTP sau này chỉ cần sửa trong hàm này.
 - Lỗi khi gửi chỉ được ghi log, không ảnh hưởng response.
 
+## Kiểm tra chất lượng code
+
+```bash
+ruff check .
+ruff format --check .
+mypy app
+```
+
+Cấu hình Ruff và mypy nằm trong `pyproject.toml`. Cả ba lệnh phải sạch lỗi trước khi mở PR. Tự sửa lỗi import và định dạng: `ruff check . --fix` và `ruff format .`.
+
 ## Test
 
 ```bash
 pytest -q
 ```
+
+Test dùng database riêng (`TEST_DATABASE_URL`, mặc định `taskhub_test` trên cổng 5434). Schema được tạo một lần mỗi phiên test, giữa các test chỉ dọn dữ liệu bằng `TRUNCATE`.
 
 | File | Nội dung |
 |---|---|
@@ -286,6 +299,8 @@ pytest -q
 | `tests/test_comments_api.py` | Comment: thêm, xóa theo tác giả hoặc OWNER, 404 không lộ tài nguyên |
 | `tests/test_task_repository.py` | Repository: lọc, phân trang |
 | `tests/test_services.py` | Service: danh sách project theo status |
+| `tests/test_permissions.py` | Dependency phân quyền: workspace, project, task |
+| `tests/test_openapi.py` | OpenAPI: lỗi khai báo theo từng endpoint, ẩn `/docs` ở prod |
 
 ## Migration
 
