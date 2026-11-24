@@ -1,4 +1,3 @@
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
@@ -13,6 +12,7 @@ from app.models import User, Workspace, WorkspaceMember
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
+from app.services.utils import conflict_on_integrity_error
 
 
 class WorkspaceService:
@@ -61,14 +61,11 @@ class WorkspaceService:
         if await self.workspace_repo.get_member(workspace_id, user.id) is not None:
             raise ConflictException(messages.ALREADY_MEMBER)
 
-        try:
+        async with conflict_on_integrity_error(self.session, messages.ALREADY_MEMBER):
             member = await self.workspace_repo.add_member(
                 workspace_id, user.id, data.role
             )
             await self.session.commit()
-        except IntegrityError:
-            await self.session.rollback()
-            raise ConflictException(messages.ALREADY_MEMBER) from None
         return member
 
     async def remove_member(self, workspace: Workspace, user_id: int) -> None:

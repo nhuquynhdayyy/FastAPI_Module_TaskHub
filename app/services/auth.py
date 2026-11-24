@@ -1,5 +1,4 @@
 import jwt
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
@@ -18,6 +17,7 @@ from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenResponse
 from app.schemas.user import UserCreate
+from app.services.utils import conflict_on_integrity_error
 
 
 class AuthService:
@@ -35,16 +35,15 @@ class AuthService:
         email = data.email.lower()
         if await self.user_repo.get_by_email(email) is not None:
             raise ConflictException(messages.EMAIL_ALREADY_REGISTERED)
-        try:
+        async with conflict_on_integrity_error(
+            self.session, messages.EMAIL_ALREADY_REGISTERED
+        ):
             user = await self.user_repo.create(
                 email=email,
                 full_name=data.full_name,
                 hashed_password=get_password_hash(data.password),
             )
             await self.session.commit()
-        except IntegrityError:
-            await self.session.rollback()
-            raise ConflictException(messages.EMAIL_ALREADY_REGISTERED) from None
         return user
 
     async def login(self, email: str, password: str) -> TokenResponse:

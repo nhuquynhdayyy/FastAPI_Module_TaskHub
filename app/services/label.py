@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
@@ -14,6 +13,7 @@ from app.repositories.label import LabelRepository
 from app.schemas.label import LabelCreate, LabelUpdate
 from app.services.cache_service import CacheService, get_cache_service
 from app.services.project import ensure_project_active
+from app.services.utils import conflict_on_integrity_error
 
 
 class LabelService:
@@ -39,14 +39,13 @@ class LabelService:
         return label
 
     async def create_label(self, project_id: int, data: LabelCreate) -> Label:
-        try:
+        async with conflict_on_integrity_error(
+            self.session, messages.LABEL_NAME_EXISTS
+        ):
             label = await self.repository.create(
                 project_id=project_id, **data.model_dump()
             )
             await self.session.commit()
-        except IntegrityError:
-            await self.session.rollback()
-            raise ConflictException(messages.LABEL_NAME_EXISTS) from None
         return label
 
     async def update_label(
@@ -56,12 +55,11 @@ class LabelService:
         changes = data.model_dump(exclude_unset=True)
         if not changes:
             return label
-        try:
+        async with conflict_on_integrity_error(
+            self.session, messages.LABEL_NAME_EXISTS
+        ):
             label = await self.repository.update(label, changes)
             await self.session.commit()
-        except IntegrityError:
-            await self.session.rollback()
-            raise ConflictException(messages.LABEL_NAME_EXISTS) from None
         await self.cache.invalidate_project(project_id)
         return label
 
@@ -78,11 +76,10 @@ class LabelService:
         if label in task.labels:
             raise ConflictException(messages.LABEL_ALREADY_ASSIGNED)
         task.labels.append(label)
-        try:
+        async with conflict_on_integrity_error(
+            self.session, messages.LABEL_ALREADY_ASSIGNED
+        ):
             await self.session.commit()
-        except IntegrityError:
-            await self.session.rollback()
-            raise ConflictException(messages.LABEL_ALREADY_ASSIGNED) from None
         await self.cache.invalidate_project(access.project.id)
         return task
 
