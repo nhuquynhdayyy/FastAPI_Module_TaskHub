@@ -13,7 +13,7 @@ from app.models import Label, Task
 from app.repositories.label import LabelRepository
 from app.schemas.label import LabelCreate, LabelUpdate
 from app.services.cache_service import CacheService, get_cache_service
-from app.services.task import ensure_project_active
+from app.services.project import ensure_project_active
 
 
 class LabelService:
