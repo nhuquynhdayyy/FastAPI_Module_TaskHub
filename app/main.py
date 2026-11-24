@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import TypedDict
 
 from fastapi import FastAPI
 
@@ -38,11 +39,21 @@ tags_metadata = [
 ]
 
 
-def docs_config(environment: Environment) -> dict[str, None]:
+class DocsUrls(TypedDict):
+    docs_url: str | None
+    redoc_url: str | None
+    openapi_url: str | None
+
+
+def docs_config(environment: Environment) -> DocsUrls:
     """Production không công khai /docs, /redoc, /openapi.json."""
     if environment == Environment.PROD:
         return {"docs_url": None, "redoc_url": None, "openapi_url": None}
-    return {}
+    return {
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "openapi_url": "/openapi.json",
+    }
 
 
 app = FastAPI(
