@@ -88,11 +88,8 @@ class TaskService:
         tasks, total = await self.repository.list_by_project(
             project_id, pagination, filters
         )
-        result = Page[TaskResponse](
-            items=[TaskResponse.model_validate(t) for t in tasks],
-            total=total,
-            page=pagination.page,
-            limit=pagination.limit,
+        result = Page[TaskResponse].build(
+            [TaskResponse.model_validate(t) for t in tasks], total, pagination
         )
         await self.cache.set_json(key, result.model_dump(mode="json"))
         return result
