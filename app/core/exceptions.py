@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -57,11 +58,12 @@ def internal_error_response(request_id: str | None) -> JSONResponse:
     )
 
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    app_exc = cast(AppException, exc)
     return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-        headers=exc.headers,
+        status_code=app_exc.status_code,
+        content={"detail": app_exc.detail},
+        headers=app_exc.headers,
     )
 
 
