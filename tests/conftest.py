@@ -1,16 +1,21 @@
+import asyncio
 import os
 
 import pytest
 import pytest_asyncio
 from fakeredis import FakeAsyncRedis, FakeServer
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.redis import get_redis
+from app.core.security import pwd_context
 from app.db.session import get_db
 from app.main import app
 from app.models.base import Base
+
+pwd_context.update(bcrypt__default_rounds=4)
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -22,12 +27,29 @@ API = "/api/v1"
 PASSWORD = "password123"
 
 
-@pytest_asyncio.fixture
-async def engine():
+def _truncate_sql() -> str:
+    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    return f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE"
+
+
+async def _reset_schema() -> None:
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _schema() -> None:
+    asyncio.run(_reset_schema())
+
+
+@pytest_asyncio.fixture
+async def engine():
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.execute(text(_truncate_sql()))
     yield engine
     await engine.dispose()
 
