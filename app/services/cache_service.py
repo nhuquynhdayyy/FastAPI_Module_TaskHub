@@ -53,12 +53,14 @@ class CacheService:
     async def get_version(self, project_id: int) -> str:
         try:
             value = await self._redis.get(self.version_key(project_id))
-            return value or "0"
         except RedisError:
             logger.warning(
                 "Redis lỗi khi đọc phiên bản project %s", project_id, exc_info=True
             )
             return "0"
+        if value is None:
+            return "0"
+        return value.decode() if isinstance(value, bytes) else str(value)
 
     async def invalidate_project(self, project_id: int) -> None:
         try:
