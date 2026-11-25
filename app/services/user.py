@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
 from app.core.exceptions import BadRequestException
-from app.core.security import get_password_hash, verify_password
+from app.core.security import hash_password_async, verify_password_async
 from app.db.session import DBSession
 from app.models import User
 from app.repositories.refresh_token import RefreshTokenRepository
@@ -30,13 +30,12 @@ class UserService:
         return user
 
     async def change_password(self, user: User, data: ChangePassword) -> None:
-        if not verify_password(data.current_password, user.hashed_password):
+        if not await verify_password_async(data.current_password, user.hashed_password):
             raise BadRequestException(messages.CURRENT_PASSWORD_INCORRECT)
         if data.new_password == data.current_password:
             raise BadRequestException(messages.NEW_PASSWORD_SAME_AS_CURRENT)
-        await self.user_repo.update(
-            user, {"hashed_password": get_password_hash(data.new_password)}
-        )
+        new_hash = await hash_password_async(data.new_password)
+        await self.user_repo.update(user, {"hashed_password": new_hash})
         await self.token_repo.revoke_all_for_user(user.id)
         await self.session.commit()
 
