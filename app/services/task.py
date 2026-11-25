@@ -5,23 +5,18 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
-from app.core.enums import ProjectStatus
-from app.core.exceptions import BadRequestException, ConflictException
+from app.core.exceptions import BadRequestException
 from app.core.pagination import Pagination
 from app.db.session import DBSession
 from app.dependencies import ProjectAccess, TaskAccess
-from app.models import Project, Task, User
+from app.models import Task, User
 from app.repositories.task import TaskRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskFilter, TaskResponse, TaskUpdate
 from app.services.cache_service import CacheService, get_cache_service
 from app.services.email import send_task_assigned_email
-
-
-def ensure_project_active(project: Project) -> None:
-    if project.status == ProjectStatus.ARCHIVED:
-        raise ConflictException(messages.PROJECT_ARCHIVED)
+from app.services.project import ensure_project_active
 
 
 class TaskService:
@@ -88,11 +83,8 @@ class TaskService:
         tasks, total = await self.repository.list_by_project(
             project_id, pagination, filters
         )
-        result = Page[TaskResponse](
-            items=[TaskResponse.model_validate(t) for t in tasks],
-            total=total,
-            page=pagination.page,
-            limit=pagination.limit,
+        result = Page[TaskResponse].build(
+            [TaskResponse.model_validate(t) for t in tasks], total, pagination
         )
         await self.cache.set_json(key, result.model_dump(mode="json"))
         return result
