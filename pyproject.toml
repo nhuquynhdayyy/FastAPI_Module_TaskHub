@@ -6,8 +6,12 @@ extend-exclude = ["migrations/versions", "venv"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["app.core.pagination.Pagination"]
+
 [tool.mypy]
 python_version = "3.11"
+files = ["app", "scripts"]
 plugins = ["pydantic.mypy"]
 disallow_untyped_defs = true
 no_implicit_optional = true
