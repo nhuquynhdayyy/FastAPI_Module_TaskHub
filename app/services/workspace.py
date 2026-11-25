@@ -7,12 +7,12 @@ from app.core.exceptions import (
     NotFoundException,
 )
 from app.core.pagination import Pagination
+from app.db.errors import conflict_on_integrity_error
 from app.db.session import DBSession
 from app.models import User, Workspace, WorkspaceMember
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
-from app.services.utils import conflict_on_integrity_error
 
 
 class WorkspaceService:
