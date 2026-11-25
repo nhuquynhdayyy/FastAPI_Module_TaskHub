@@ -40,13 +40,14 @@ async def _reset_schema() -> None:
     await engine.dispose()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def _schema() -> None:
+    """Tạo lại schema đúng một lần, chỉ khi có test cần DB."""
     asyncio.run(_reset_schema())
 
 
 @pytest_asyncio.fixture
-async def engine():
+async def engine(_schema):
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.execute(text(_truncate_sql()))
