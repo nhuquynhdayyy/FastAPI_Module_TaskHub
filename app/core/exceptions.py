@@ -57,7 +57,9 @@ def internal_error_response(request_id: str | None) -> JSONResponse:
     )
 
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, AppException):
+        raise exc
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
