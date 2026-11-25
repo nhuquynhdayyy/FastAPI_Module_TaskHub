@@ -4,12 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import messages
 from app.core.exceptions import ConflictException, UnauthorizedException
 from app.core.security import (
+    DUMMY_HASH,
     REFRESH_TOKEN_TYPE,
     create_access_token,
     create_refresh_token,
     decode_token,
-    get_password_hash,
-    verify_password,
+    hash_password_async,
+    verify_password_async,
 )
 from app.db.errors import conflict_on_integrity_error
 from app.db.session import DBSession
@@ -35,24 +36,25 @@ class AuthService:
         email = data.email.lower()
         if await self.user_repo.get_by_email(email) is not None:
             raise ConflictException(messages.EMAIL_ALREADY_REGISTERED)
+        hashed_password = await hash_password_async(data.password)
         async with conflict_on_integrity_error(
             self.session, messages.EMAIL_ALREADY_REGISTERED
         ):
             user = await self.user_repo.create(
                 email=email,
                 full_name=data.full_name,
-                hashed_password=get_password_hash(data.password),
+                hashed_password=hashed_password,
             )
             await self.session.commit()
         return user
 
     async def login(self, email: str, password: str) -> TokenResponse:
         user = await self.user_repo.get_by_email(email.lower())
-        if (
-            user is None
-            or not verify_password(password, user.hashed_password)
-            or not user.is_active
-        ):
+        if user is None:
+            await verify_password_async(password, DUMMY_HASH)
+            raise UnauthorizedException(messages.INVALID_CREDENTIALS)
+        password_ok = await verify_password_async(password, user.hashed_password)
+        if not password_ok or not user.is_active:
             raise UnauthorizedException(messages.INVALID_CREDENTIALS)
         tokens = await self._issue_tokens(user.id)
         await self.session.commit()

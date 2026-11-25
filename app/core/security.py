@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -6,8 +7,11 @@ import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.constants import BCRYPT_ROUNDS
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"], deprecated="auto", bcrypt__default_rounds=BCRYPT_ROUNDS
+)
 
 ACCESS_TOKEN_TYPE = "access"
 REFRESH_TOKEN_TYPE = "refresh"
@@ -19,6 +23,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
+    return await asyncio.to_thread(verify_password, plain_password, hashed_password)
+
+
+async def hash_password_async(password: str) -> str:
+    return await asyncio.to_thread(get_password_hash, password)
+
+
+DUMMY_HASH = get_password_hash("dummy-password-for-timing")
 
 
 def _create_token(
