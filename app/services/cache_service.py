@@ -60,7 +60,7 @@ class CacheService:
             return "0"
         if value is None:
             return "0"
-        return value.decode() if isinstance(value, bytes) else str(value)
+        return str(value)
 
     async def invalidate_project(self, project_id: int) -> None:
         try:

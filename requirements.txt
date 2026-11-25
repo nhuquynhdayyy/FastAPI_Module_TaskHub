@@ -35,7 +35,3 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 uvicorn==0.54.0
 websockets==17.3
-mypy==2.4.1
-mypy_extensions==1.2.0
-ruff==0.17.6
-types-passlib==1.7.7.20260211
