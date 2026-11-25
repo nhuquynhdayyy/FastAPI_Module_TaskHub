@@ -39,7 +39,7 @@ tags_metadata = [
 ]
 
 
-class DocsUrls(TypedDict):
+class DocsUrls(TypedDict, total=False):
     docs_url: str | None
     redoc_url: str | None
     openapi_url: str | None
@@ -49,11 +49,7 @@ def docs_config(environment: Environment) -> DocsUrls:
     """Production không công khai /docs, /redoc, /openapi.json."""
     if environment == Environment.PROD:
         return {"docs_url": None, "redoc_url": None, "openapi_url": None}
-    return {
-        "docs_url": "/docs",
-        "redoc_url": "/redoc",
-        "openapi_url": "/openapi.json",
-    }
+    return {}
 
 
 app = FastAPI(

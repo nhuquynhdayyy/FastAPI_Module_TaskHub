@@ -13,13 +13,13 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
+from app.db.errors import conflict_on_integrity_error
 from app.db.session import DBSession
 from app.models import User
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenResponse
 from app.schemas.user import UserCreate
-from app.services.utils import conflict_on_integrity_error
 
 
 class AuthService:

@@ -18,7 +18,7 @@ class BaseRepository(Generic[ModelT]):
         return await self.session.get(self.model, obj_id)
 
     async def paginate(
-        self, stmt: Select[Any], pagination: Pagination
+        self, stmt: Select[ModelT], pagination: Pagination
     ) -> tuple[list[ModelT], int]:
         total = await self.session.scalar(
             select(func.count()).select_from(stmt.order_by(None).subquery())
@@ -29,10 +29,8 @@ class BaseRepository(Generic[ModelT]):
         return list(result.all()), total or 0
 
     async def get_multi(
-        self, pagination: Pagination | None = None
+        self, pagination: Pagination = Pagination()
     ) -> tuple[list[ModelT], int]:
-        if pagination is None:
-            pagination = Pagination()
         stmt = select(self.model).order_by(*inspect(self.model).primary_key)
         return await self.paginate(stmt, pagination)
 

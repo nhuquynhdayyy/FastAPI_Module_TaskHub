@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import messages
 from app.core.exceptions import ConflictException, NotFoundException
 from app.core.pagination import Pagination
+from app.db.errors import conflict_on_integrity_error
 from app.db.session import DBSession
 from app.dependencies import TaskAccess
 from app.models import Label, Task
@@ -13,7 +14,6 @@ from app.repositories.label import LabelRepository
 from app.schemas.label import LabelCreate, LabelUpdate
 from app.services.cache_service import CacheService, get_cache_service
 from app.services.project import ensure_project_active
-from app.services.utils import conflict_on_integrity_error
 
 
 class LabelService:
