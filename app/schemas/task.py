@@ -1,4 +1,5 @@
-from datetime import datetime, UTC
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from pydantic import ConfigDict, Field, field_validator
 
@@ -11,7 +12,6 @@ from app.core.constants import (
 from app.core.enums import TaskPriority, TaskStatus
 from app.schemas.base import AppBaseModel, UpdateModel
 from app.schemas.label import LabelResponse
-from dataclasses import dataclass
 
 
 class TaskCreate(AppBaseModel):

@@ -2,9 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import WorkspaceRole
+from app.core.pagination import Pagination
 from app.models import Workspace, WorkspaceMember
 from app.repositories.base import BaseRepository
-from app.core.pagination import Pagination
 
 
 class WorkspaceRepository(BaseRepository[Workspace]):

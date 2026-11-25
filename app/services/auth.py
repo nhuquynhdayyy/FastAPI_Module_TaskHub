@@ -1,7 +1,4 @@
-from typing import Annotated
-
 import jwt
-from fastapi import Depends
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 

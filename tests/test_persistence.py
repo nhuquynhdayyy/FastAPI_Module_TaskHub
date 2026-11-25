@@ -1,3 +1,5 @@
+import asyncio
+
 API = "/api/v1"
 EMAIL = "quynh@gmail.com"
 PASSWORD = "password123"
@@ -153,9 +155,6 @@ async def test_patch_project_description_null_clears_it(client):
 
     resp = await client.get(url, headers=headers)
     assert resp.json()["description"] is None
-
-
-import asyncio
 
 
 async def test_concurrent_add_member_only_one_succeeds(client):

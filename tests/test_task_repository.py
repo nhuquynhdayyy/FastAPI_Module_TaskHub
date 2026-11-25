@@ -1,11 +1,11 @@
 import pytest
 
 from app.core.enums import TaskPriority, TaskStatus
+from app.core.pagination import Pagination
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
-from app.core.pagination import Pagination
 from app.schemas.task import TaskFilter
 
 

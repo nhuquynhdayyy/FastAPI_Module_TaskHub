@@ -1,5 +1,7 @@
-from pydantic import BaseModel, ConfigDict, model_validator
 from typing import ClassVar, Self
+
+from pydantic import BaseModel, ConfigDict, model_validator
+
 from app.core import messages
 
 

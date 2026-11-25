@@ -1,6 +1,4 @@
-from typing import Annotated
-
-from fastapi import Depends
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import messages
@@ -9,13 +7,12 @@ from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
+from app.core.pagination import Pagination
 from app.db.session import DBSession
 from app.models import User, Workspace, WorkspaceMember
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
-from sqlalchemy.exc import IntegrityError
-from app.core.pagination import Pagination
 
 
 class WorkspaceService:

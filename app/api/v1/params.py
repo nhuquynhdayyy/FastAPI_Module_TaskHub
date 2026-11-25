@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import Query, Depends
+from fastapi import Depends, Query
+
 from app.core.constants import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.pagination import Pagination
 

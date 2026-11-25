@@ -1,32 +1,34 @@
-from app.core.enums import (
-    TaskStatus,
-    TaskPriority,
-    UserRole,
-    WorkspaceRole,
-    ProjectStatus,
-)
-from app.models.base import Base
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
+
 from sqlalchemy import (
-    String,
-    Enum,
-    DateTime,
-    func,
-    ForeignKey,
     Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
     Table,
     Text,
-    Index,
     UniqueConstraint,
+    func,
 )
-from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.constants import (
-    TITLE_MAX_LENGTH,
+    COMMENT_MAX_LENGTH,
     DESCRIPTION_MAX_LENGTH,
     LABEL_COLOR_DEFAULT,
     LABEL_NAME_MAX_LENGTH,
-    COMMENT_MAX_LENGTH,
+    TITLE_MAX_LENGTH,
 )
+from app.core.enums import (
+    ProjectStatus,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+    WorkspaceRole,
+)
+from app.models.base import Base
 
 
 class User(Base):

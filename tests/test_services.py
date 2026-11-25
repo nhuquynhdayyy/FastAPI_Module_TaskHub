@@ -6,6 +6,7 @@ from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
+from app.core.pagination import Pagination
 from app.repositories.project import ProjectRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
@@ -13,7 +14,6 @@ from app.schemas.project import ProjectCreate
 from app.schemas.workspace import MemberAdd, WorkspaceCreate, WorkspaceUpdate
 from app.services.project import ProjectService
 from app.services.workspace import WorkspaceService
-from app.core.pagination import Pagination
 
 
 @pytest.fixture

@@ -2,9 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ProjectStatus
+from app.core.pagination import Pagination
 from app.models import Project
 from app.repositories.base import BaseRepository
-from app.core.pagination import Pagination
 
 
 class ProjectRepository(BaseRepository[Project]):

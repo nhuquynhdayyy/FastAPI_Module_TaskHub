@@ -16,12 +16,12 @@ from app.core.exceptions import (
 from app.core.permissions import has_at_least
 from app.core.security import ACCESS_TOKEN_TYPE, decode_token
 from app.db.session import get_db
-from app.models import Project, Task, User, Workspace, Comment
+from app.models import Comment, Project, Task, User, Workspace
+from app.repositories.comment import CommentRepository
 from app.repositories.project import ProjectRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.workspace import WorkspaceRepository
-from app.repositories.comment import CommentRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
@@ -212,16 +212,26 @@ def require_comment_role(minimum: WorkspaceRole):  # type: ignore[no-untyped-def
     return dependency
 
 
-V, E, O = WorkspaceRole.VIEWER, WorkspaceRole.EDITOR, WorkspaceRole.OWNER
+WorkspaceViewer = Annotated[
+    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.VIEWER))
+]
+WorkspaceEditor = Annotated[
+    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.EDITOR))
+]
+WorkspaceOwner = Annotated[
+    WorkspaceAccess, Depends(require_workspace_role(WorkspaceRole.OWNER))
+]
 
-WorkspaceViewer = Annotated[WorkspaceAccess, Depends(require_workspace_role(V))]
-WorkspaceEditor = Annotated[WorkspaceAccess, Depends(require_workspace_role(E))]
-WorkspaceOwner = Annotated[WorkspaceAccess, Depends(require_workspace_role(O))]
+ProjectViewer = Annotated[
+    ProjectAccess, Depends(require_project_role(WorkspaceRole.VIEWER))
+]
+ProjectEditor = Annotated[
+    ProjectAccess, Depends(require_project_role(WorkspaceRole.EDITOR))
+]
 
-ProjectViewer = Annotated[ProjectAccess, Depends(require_project_role(V))]
-ProjectEditor = Annotated[ProjectAccess, Depends(require_project_role(E))]
+TaskViewer = Annotated[TaskAccess, Depends(require_task_role(WorkspaceRole.VIEWER))]
+TaskEditor = Annotated[TaskAccess, Depends(require_task_role(WorkspaceRole.EDITOR))]
 
-TaskViewer = Annotated[TaskAccess, Depends(require_task_role(V))]
-TaskEditor = Annotated[TaskAccess, Depends(require_task_role(E))]
-
-CommentViewer = Annotated[CommentAccess, Depends(require_comment_role(V))]
+CommentViewer = Annotated[
+    CommentAccess, Depends(require_comment_role(WorkspaceRole.VIEWER))
+]

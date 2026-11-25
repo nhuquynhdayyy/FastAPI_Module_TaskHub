@@ -1,6 +1,7 @@
 import asyncio
+
 import jwt
-import pytest
+
 from app.core.config import settings
 
 API = "/api/v1"

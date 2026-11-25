@@ -1,8 +1,10 @@
-from passlib.context import CryptContext
-from datetime import datetime, timedelta, timezone
-import jwt
-from typing import Any
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import jwt
+from passlib.context import CryptContext
+
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -22,7 +24,7 @@ def get_password_hash(password: str) -> str:
 def _create_token(
     subject: int, token_type: str, expires_delta: timedelta
 ) -> tuple[str, str, datetime]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = now + expires_delta
     jti = uuid.uuid4().hex
     payload: dict[str, Any] = {

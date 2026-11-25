@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
+
 from app.api.v1.endpoints import (
-    tasks,
     auth,
+    comments,
+    labels,
+    projects,
+    tasks,
     users,
     workspaces,
-    projects,
-    labels,
-    comments,
 )
-from app.dependencies import get_current_user
 from app.api.v1.responses import UNAUTHORIZED
 
 api_router = APIRouter()
